@@ -94,14 +94,39 @@ python DebloatKit.py
 
 ---
 
-## Build as .exe (optional)
+## Build as .exe
 
+### Quick build (Windows)
+Double-click `build.bat` — it installs dependencies, compiles, and outputs `dist\DebloatKit.exe`.
+
+### Manual build command
 ```bash
-pip install pyinstaller
-pyinstaller --onefile --windowed --name DebloatKit --icon assets/icon.ico DebloatKit.py
+pip install customtkinter pyinstaller
+
+pyinstaller ^
+  --onefile ^
+  --windowed ^
+  --name "DebloatKit" ^
+  --uac-admin ^
+  --add-data "data;data" ^
+  --hidden-import customtkinter ^
+  --collect-all customtkinter ^
+  DebloatKit.py
 ```
 
-The `.exe` will be in the `dist/` folder.
+The `.exe` is output to `dist\DebloatKit.exe`.
+
+### Build Windows Installer (.exe setup)
+1. Download [Inno Setup 6](https://jrsoftware.org/isinfo.php) and install it
+2. Run `build.bat` first (builds the `.exe`)
+3. Run `installer\build_installer.bat`  — or open `installer\DebloatKit_Installer.iss` in Inno Setup and press **F9**
+4. Installer is output to `installer\Output\DebloatKit_Setup_v1.0.exe`
+
+The installer:
+- Checks for ADB and warns the user if missing
+- Creates `backups\` folder automatically
+- Adds optional desktop shortcut, Quick Launch, startup entry
+- Includes uninstall with cleanup
 
 ---
 
@@ -206,8 +231,8 @@ Pull requests welcome. To add packages:
 
 DebloatKit is free and always will be. If it saved you time:
 
-- ☕ [Buy Me a Coffee](https://buymeacoffee.com/yashwanthramsomireddy)
-- UPI: `yashwanthramsomireddy@okaxis`
+- 💙 [Donate via PayPal](https://paypal.me/yash92duster)
+- 🟦 [Pay via Razorpay](https://rzp.io/rzp/nsogoeD)
 - ⭐ Star this repo
 
 ---

@@ -16,7 +16,6 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 import threading
 import os
-import sys
 import webbrowser
 from datetime import datetime
 
@@ -31,8 +30,8 @@ APP_AUTHOR  = "Yashwanth Ram Somireddy"
 APP_BRAND   = "TeamExyKings"
 APP_GITHUB  = "https://github.com/yashwanthramsomireddy/DebloatKit"
 APP_LICENSE = "MIT — Free & Open Source"
-WINDOW_W    = 1280
-WINDOW_H    = 820
+WINDOW_W    = 1300
+WINDOW_H    = 840
 
 
 class DebloatKit(ctk.CTk):
@@ -41,16 +40,17 @@ class DebloatKit(ctk.CTk):
 
         self.current_theme_name = "Green"
         self.T = get_theme(self.current_theme_name)
-        self._apply_ctk_theme()
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("green")
 
         self.title(f"{APP_NAME} {APP_VERSION} — {APP_BRAND}")
         self.geometry(f"{WINDOW_W}x{WINDOW_H}")
-        self.minsize(1100, 700)
+        self.minsize(1100, 720)
         self.configure(fg_color=self.T["bg"])
 
         # Core modules
-        self.adb = ADBManager(log_callback=self._log)
-        self.scanner = AppScanner(self.adb, log_callback=self._log)
+        self.adb      = ADBManager(log_callback=self._log)
+        self.scanner  = AppScanner(self.adb, log_callback=self._log)
         self.debloater = Debloater(self.adb, log_callback=self._log)
 
         # State
@@ -58,661 +58,710 @@ class DebloatKit(ctk.CTk):
         self.app_data: dict[str, list[AppEntry]] = {
             "system": [], "core": [], "user": [], "thirdparty": [], "keep": []
         }
-        self.dry_run_var = tk.BooleanVar(value=False)
-        self.compact_var = tk.BooleanVar(value=True)
-        self._scanning = False
+        self.compact_var     = tk.BooleanVar(value=True)
+        self._spacious_mode  = False   # False = compact (default ON)
+        self._scanning       = False
         self._action_running = False
+        self._active_tab     = "system"
 
         self._build_ui()
         self._start_device_polling()
 
-    # ─── Theme ────────────────────────────────────────────────────────────────
-
-    def _apply_ctk_theme(self):
-        ctk.set_appearance_mode("dark" if self.T["bg"] < "#888888" else "light")
-        ctk.set_default_color_theme("green")
-
-    def _switch_theme(self, name: str):
-        self.current_theme_name = name
-        self.T = get_theme(name)
-        self._apply_ctk_theme()
-        self._rebuild_ui()
-
-    def _rebuild_ui(self):
-        for w in self.winfo_children():
-            w.destroy()
-        self.configure(fg_color=self.T["bg"])
-        self._build_ui()
-        if self.device_info:
-            self._refresh_device_card()
-        self._refresh_all_tabs()
-
-    # ─── UI Construction ──────────────────────────────────────────────────────
+    # ─── Build UI ─────────────────────────────────────────────────────────────
 
     def _build_ui(self):
         T = self.T
-        # Topbar
-        self.topbar = ctk.CTkFrame(self, fg_color=T["topbar_bg"], height=52, corner_radius=0)
+
+        # ── Topbar ───────────────────────────────────────────────────────────
+        self.topbar = ctk.CTkFrame(self, fg_color=T["topbar_bg"], height=56, corner_radius=0)
         self.topbar.pack(fill="x", side="top")
         self.topbar.pack_propagate(False)
         self._build_topbar()
 
-        # Main body
+        # ── Bottom bar (START DEBLOAT + Log btn) ─────────────────────────────
+        self.bottombar = ctk.CTkFrame(self, fg_color=T["bg"], height=62, corner_radius=0)
+        self.bottombar.pack(fill="x", side="bottom")
+        self.bottombar.pack_propagate(False)
+        self._build_bottombar()
+
+        # ── Status strip (Ready / scanning) ──────────────────────────────────
+        self.statusbar = ctk.CTkFrame(self, fg_color=T["bg"], height=22, corner_radius=0)
+        self.statusbar.pack(fill="x", side="bottom")
+        self.statusbar.pack_propagate(False)
+        self.status_text = ctk.CTkLabel(
+            self.statusbar, text="Connect your device via USB and enable USB Debugging.",
+            font=("Segoe UI", 10), text_color=T["text_muted"], anchor="w"
+        )
+        self.status_text.pack(side="left", padx=14)
+        self.progress_bar = ctk.CTkProgressBar(
+            self.statusbar, fg_color=T["progress_bg"], progress_color=T["accent"],
+            height=4, width=200
+        )
+        self.progress_bar.set(0)
+        self.progress_bar.pack(side="left", padx=8, pady=8)
+
+        # ── Body: sidebar + content ───────────────────────────────────────────
         self.body = ctk.CTkFrame(self, fg_color=T["bg"], corner_radius=0)
         self.body.pack(fill="both", expand=True)
 
-        # Tabview
-        self.tabview = ctk.CTkTabview(
-            self.body,
-            fg_color=T["bg_card"],
-            segmented_button_fg_color=T["bg"],
-            segmented_button_selected_color=T["accent"],
-            segmented_button_selected_hover_color=T["accent_dim"],
-            segmented_button_unselected_color=T["bg"],
-            segmented_button_unselected_hover_color=T["bg_hover"],
-            text_color=T["text"],
-            text_color_disabled=T["text_dim"],
-            corner_radius=8
+        # Sidebar (spacious mode — hidden in compact)
+        self.sidebar = ctk.CTkFrame(self.body, fg_color=T["bg"], width=160, corner_radius=0)
+        # Don't pack sidebar yet — compact mode is default
+
+        # Content area
+        self.content = ctk.CTkFrame(self.body, fg_color=T["bg"], corner_radius=0)
+        self.content.pack(fill="both", expand=True)
+
+        # ── Device info card ─────────────────────────────────────────────────
+        self.device_card = ctk.CTkFrame(self.content, fg_color=T["bg_card"], height=44, corner_radius=6)
+        self.device_card.pack(fill="x", padx=12, pady=(6, 0))
+        self.device_card.pack_propagate(False)
+        self._build_device_card()
+
+        # ── Tab bar (compact: horizontal tabs) ───────────────────────────────
+        self.tabbar = ctk.CTkFrame(self.content, fg_color=T["bg"], height=38, corner_radius=0)
+        self.tabbar.pack(fill="x", padx=12, pady=(4, 0))
+        self.tabbar.pack_propagate(False)
+        self._build_tabbar()
+
+        # ── Select All / Deselect All + total count row ───────────────────────
+        self.sel_bar = ctk.CTkFrame(self.content, fg_color=T["bg"], height=38, corner_radius=0)
+        self.sel_bar.pack(fill="x", padx=12, pady=(2, 0))
+        self.sel_bar.pack_propagate(False)
+        self._build_sel_bar()
+
+        # ── Total selected strip ──────────────────────────────────────────────
+        self.info_strip = ctk.CTkFrame(self.content, fg_color=T["bg_card"], height=30, corner_radius=4)
+        self.info_strip.pack(fill="x", padx=12, pady=(2, 0))
+        self.info_strip.pack_propagate(False)
+        self.info_lbl = ctk.CTkLabel(
+            self.info_strip, text="💾  No device scanned yet",
+            font=("Segoe UI", 10), text_color=T["accent"], anchor="w"
         )
-        self.tabview.pack(fill="both", expand=True, padx=12, pady=(8, 0))
+        self.info_lbl.pack(side="left", padx=10)
 
-        # Create tabs
-        self.tab_system     = self.tabview.add("  System Apps  ")
-        self.tab_core       = self.tabview.add("  Core Apps  ")
-        self.tab_user       = self.tabview.add("  User Apps  ")
-        self.tab_thirdparty = self.tabview.add("  3rd Party  ")
-        self.tab_logs       = self.tabview.add("  Logs  ")
-        self.tab_settings   = self.tabview.add("  Settings  ")
-        self.tab_about      = self.tabview.add("  About  ")
+        # ── Package list scroll area ──────────────────────────────────────────
+        self.pkg_scroll = ctk.CTkScrollableFrame(
+            self.content, fg_color=T["bg"],
+            scrollbar_button_color=T["scrollbar"],
+            scrollbar_button_hover_color=T["accent"]
+        )
+        self.pkg_scroll.pack(fill="both", expand=True, padx=12, pady=(4, 0))
 
-        # Device info strip
-        self.device_strip = ctk.CTkFrame(self.body, fg_color=T["bg_card"], height=42, corner_radius=6)
-        self.device_strip.pack(fill="x", padx=12, pady=(4, 0))
-        self.device_strip.pack_propagate(False)
-        self._build_device_strip()
+        # ── Log panel (right side — hidden by default, shown via Log btn) ─────
+        self.log_panel = ctk.CTkFrame(self.body, fg_color=T["log_bg"], width=280, corner_radius=0)
+        self.log_visible = False
+        self._log_header_built = False
 
-        # Log strip at bottom
-        self.log_strip = ctk.CTkFrame(self.body, fg_color=T["log_bg"], height=110, corner_radius=0)
-        self.log_strip.pack(fill="x", side="bottom")
-        self.log_strip.pack_propagate(False)
-        self._build_log_strip()
+        # Build log content lazily
+        self._build_log_panel()
 
-        # Build tab contents
-        self._build_app_tab(self.tab_system, "system")
-        self._build_core_tab()
-        self._build_app_tab(self.tab_user, "user")
-        self._build_app_tab(self.tab_thirdparty, "thirdparty")
-        self._build_logs_tab()
-        self._build_settings_tab()
-        self._build_about_tab()
+        # Pages dictionary for tab switching
+        self._tab_btns = {}
 
     def _build_topbar(self):
         T = self.T
         tb = self.topbar
 
-        # Left — logo
+        # Left: logo + name
         left = ctk.CTkFrame(tb, fg_color="transparent")
-        left.pack(side="left", padx=16, pady=8)
+        left.pack(side="left", padx=14, pady=8)
 
-        ctk.CTkLabel(left, text="⬡", font=("Segoe UI", 22), text_color=T["accent"]).pack(side="left", padx=(0, 6))
-        ctk.CTkLabel(left, text=APP_NAME, font=("Segoe UI", 16, "bold"), text_color=T["text"]).pack(side="left")
-        ctk.CTkLabel(left, text=APP_VERSION, font=("Segoe UI", 11), text_color=T["text_muted"]).pack(side="left", padx=(4, 0), pady=(4, 0))
+        ctk.CTkLabel(
+            left, text="⬡", font=("Segoe UI", 26), text_color=T["accent"]
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(
+            left, text=APP_NAME, font=("Segoe UI", 18, "bold"), text_color=T["accent"]
+        ).pack(side="left")
+        ctk.CTkLabel(
+            left, text=f" {APP_VERSION}", font=("Segoe UI", 11), text_color=T["text_muted"]
+        ).pack(side="left", pady=(5, 0))
 
-        # Right — controls
+        # Right: compact toggle + connection dot
         right = ctk.CTkFrame(tb, fg_color="transparent")
-        right.pack(side="right", padx=16, pady=8)
+        right.pack(side="right", padx=14, pady=8)
 
-        # Dry Run
-        ctk.CTkLabel(right, text="Dry Run", font=("Segoe UI", 12), text_color=T["text_muted"]).pack(side="left", padx=(0, 4))
-        self.dry_run_switch = ctk.CTkSwitch(
-            right, variable=self.dry_run_var, text="",
-            progress_color=T["warning"], button_color=T["warning"],
-            width=42, command=self._on_dry_run_toggle
-        )
-        self.dry_run_switch.pack(side="left", padx=(0, 16))
+        # Connection status
+        self.status_dot   = ctk.CTkLabel(right, text="●", font=("Segoe UI", 14), text_color="#333333")
+        self.status_label = ctk.CTkLabel(right, text="No Device", font=("Segoe UI", 11), text_color=T["text_muted"])
+        self.status_label.pack(side="right", padx=(4, 0))
+        self.status_dot.pack(side="right", padx=(12, 0))
 
-        # Compact toggle
-        ctk.CTkLabel(right, text="Compact", font=("Segoe UI", 12), text_color=T["text_muted"]).pack(side="left", padx=(0, 4))
+        # Compact toggle — matches PurgeKit exactly
         self.compact_switch = ctk.CTkSwitch(
             right, variable=self.compact_var, text="",
             progress_color=T["accent"], button_color=T["accent"],
-            width=42, command=self._refresh_all_tabs
+            button_hover_color=T["accent_dim"],
+            width=46, height=22,
+            command=self._on_compact_toggle
         )
-        self.compact_switch.pack(side="left", padx=(0, 20))
+        self.compact_switch.pack(side="right", padx=(4, 0))
+        self.compact_switch.select()   # ON by default
 
-        # Connection status
-        self.status_dot = ctk.CTkLabel(right, text="●", font=("Segoe UI", 14), text_color="#444444")
-        self.status_dot.pack(side="left", padx=(0, 4))
-        self.status_label = ctk.CTkLabel(right, text="No Device", font=("Segoe UI", 12), text_color=T["text_muted"])
-        self.status_label.pack(side="left")
+        ctk.CTkLabel(
+            right, text="Compact", font=("Segoe UI", 11), text_color=T["text_muted"]
+        ).pack(side="right", padx=(16, 2))
 
-    def _build_device_strip(self):
+    def _build_device_card(self):
         T = self.T
-        ds = self.device_strip
+        dc = self.device_card
 
-        self.dev_model_lbl  = ctk.CTkLabel(ds, text="No device connected", font=("Segoe UI", 12, "bold"), text_color=T["text_muted"])
-        self.dev_model_lbl.pack(side="left", padx=14, pady=10)
+        self.dev_model_lbl = ctk.CTkLabel(
+            dc, text="No device connected",
+            font=("Segoe UI", 11, "bold"), text_color=T["text_muted"], anchor="w"
+        )
+        self.dev_model_lbl.pack(side="left", padx=12)
 
-        self.dev_info_lbl   = ctk.CTkLabel(ds, text="Connect your device via USB and enable USB Debugging", font=("Segoe UI", 11), text_color=T["text_dim"])
+        self.dev_info_lbl = ctk.CTkLabel(
+            dc, text="Plug in your Galaxy device and enable USB Debugging",
+            font=("Segoe UI", 10), text_color=T["text_dim"], anchor="w"
+        )
         self.dev_info_lbl.pack(side="left", padx=4)
 
+        self.bat_lbl = ctk.CTkLabel(dc, text="", font=("Segoe UI", 10), text_color=T["text_muted"])
+        self.bat_lbl.pack(side="right", padx=8)
+
         self.scan_btn = ctk.CTkButton(
-            ds, text="Scan Device", font=("Segoe UI", 12, "bold"),
+            dc, text="⟳  Scan", font=("Segoe UI", 11, "bold"),
             fg_color=T["accent"], text_color=T["btn_primary_text"],
-            hover_color=T["accent_dim"], width=120, height=28,
+            hover_color=T["accent_dim"], width=100, height=28,
             command=self._start_scan, state="disabled"
         )
-        self.scan_btn.pack(side="right", padx=12)
+        self.scan_btn.pack(side="right", padx=8, pady=6)
 
-        self.bat_lbl = ctk.CTkLabel(ds, text="", font=("Segoe UI", 11), text_color=T["text_muted"])
-        self.bat_lbl.pack(side="right", padx=6)
-
-    def _build_log_strip(self):
+    def _build_tabbar(self):
         T = self.T
-        ls = self.log_strip
+        tb = self.tabbar
 
-        hdr = ctk.CTkFrame(ls, fg_color="transparent")
-        hdr.pack(fill="x", padx=8, pady=(4, 0))
-        ctk.CTkLabel(hdr, text="LOG", font=("Segoe UI", 10, "bold"), text_color=T["accent"]).pack(side="left")
-        ctk.CTkButton(
-            hdr, text="Clear", font=("Segoe UI", 10),
-            fg_color="transparent", text_color=T["text_dim"],
-            hover_color=T["bg_hover"], width=40, height=18,
-            command=self._clear_log_strip
-        ).pack(side="right")
+        tabs = [
+            ("system",     "System Apps"),
+            ("core",       "Core Apps"),
+            ("user",       "User Apps"),
+            ("thirdparty", "3rd Party"),
+            ("logs",       "Log"),
+            ("settings",   "Settings"),
+            ("about",      "About"),
+        ]
 
-        self.log_strip_text = ctk.CTkTextbox(
-            ls, fg_color=T["log_bg"], text_color=T["text"],
-            font=("Consolas", 11), height=80, corner_radius=0,
-            scrollbar_button_color=T["scrollbar"]
-        )
-        self.log_strip_text.pack(fill="both", expand=True, padx=6, pady=(0, 4))
-        self.log_strip_text.configure(state="disabled")
+        self._tab_btns = {}
+        for key, label in tabs:
+            btn = ctk.CTkButton(
+                tb, text=label,
+                font=("Segoe UI", 11),
+                fg_color=T["accent"] if key == "system" else "transparent",
+                text_color=T["btn_primary_text"] if key == "system" else T["text_muted"],
+                hover_color=T["bg_hover"],
+                corner_radius=6,
+                height=30, width=0,
+                command=lambda k=key: self._switch_tab(k)
+            )
+            btn.pack(side="left", padx=(0, 2))
+            self._tab_btns[key] = btn
 
-    # ─── App Tab (reused for System, User, 3rd Party) ─────────────────────────
-
-    def _build_app_tab(self, parent: ctk.CTkFrame, category: str):
+    def _build_sel_bar(self):
         T = self.T
+        sb = self.sel_bar
 
-        # Filter bar
-        filter_bar = ctk.CTkFrame(parent, fg_color="transparent")
-        filter_bar.pack(fill="x", pady=(8, 4), padx=8)
-
-        search_var = tk.StringVar()
-        search_box = ctk.CTkEntry(
-            filter_bar, placeholder_text="Search packages...",
-            textvariable=search_var, width=240, height=30,
-            fg_color=T["bg_card"], border_color=T["border"],
-            text_color=T["text"]
+        self.sel_all_btn = ctk.CTkButton(
+            sb, text="✓  Select All",
+            font=("Segoe UI", 11, "bold"),
+            fg_color=T["accent"], text_color=T["btn_primary_text"],
+            hover_color=T["accent_dim"],
+            width=120, height=28,
+            command=lambda: self._select_all(self._active_tab, True)
         )
-        search_box.pack(side="left", padx=(0, 8))
+        self.sel_all_btn.pack(side="left", padx=(0, 6))
+
+        self.desel_all_btn = ctk.CTkButton(
+            sb, text="✕  Deselect All",
+            font=("Segoe UI", 11),
+            fg_color=T["bg_card"], text_color=T["text"],
+            hover_color=T["bg_hover"],
+            width=120, height=28,
+            command=lambda: self._select_all(self._active_tab, False)
+        )
+        self.desel_all_btn.pack(side="left", padx=(0, 6))
 
         # Subcategory filter
-        subcat_var = tk.StringVar(value="All")
-        self.__dict__[f"subcat_var_{category}"] = subcat_var
-        subcat_menu = ctk.CTkOptionMenu(
-            filter_bar, variable=subcat_var,
-            values=["All"], width=160, height=30,
+        self.subcat_var = tk.StringVar(value="All")
+        self.subcat_menu = ctk.CTkOptionMenu(
+            sb, variable=self.subcat_var,
+            values=["All"], width=160, height=28,
             fg_color=T["bg_card"], button_color=T["accent"],
             dropdown_fg_color=T["bg_card"], text_color=T["text"],
-            command=lambda v, c=category: self._filter_tab(c)
+            command=lambda v: self._filter_active_tab()
         )
-        subcat_menu.pack(side="left", padx=(0, 8))
-        self.__dict__[f"subcat_menu_{category}"] = subcat_menu
+        self.subcat_menu.pack(side="left", padx=(0, 6))
 
-        count_lbl = ctk.CTkLabel(filter_bar, text="0 packages", font=("Segoe UI", 11), text_color=T["text_muted"])
-        count_lbl.pack(side="left", padx=8)
-        self.__dict__[f"count_lbl_{category}"] = count_lbl
-
-        # Scrollable list
-        scroll = ctk.CTkScrollableFrame(
-            parent, fg_color=T["bg"],
-            scrollbar_button_color=T["scrollbar"],
-            scrollbar_button_hover_color=T["accent"]
-        )
-        scroll.pack(fill="both", expand=True, padx=8, pady=4)
-        self.__dict__[f"scroll_{category}"] = scroll
-
-        # Action bar at bottom
-        action_bar = ctk.CTkFrame(parent, fg_color=T["bg_card"], height=48, corner_radius=6)
-        action_bar.pack(fill="x", padx=8, pady=(4, 8))
-        action_bar.pack_propagate(False)
-        self._build_action_bar(action_bar, category)
-
-        # Bind search
-        search_var.trace_add("write", lambda *a, c=category, sv=search_var: self._filter_tab(c, sv.get()))
-        self.__dict__[f"search_var_{category}"] = search_var
-
-    def _build_action_bar(self, parent, category: str):
-        T = self.T
-
-        ctk.CTkButton(
-            parent, text="Select All", font=("Segoe UI", 11),
-            fg_color=T["bg_hover"], text_color=T["text"], hover_color=T["border"],
-            width=90, height=30,
-            command=lambda c=category: self._select_all(c, True)
-        ).pack(side="left", padx=(10, 4), pady=9)
-
-        ctk.CTkButton(
-            parent, text="Deselect All", font=("Segoe UI", 11),
-            fg_color=T["bg_hover"], text_color=T["text"], hover_color=T["border"],
-            width=95, height=30,
-            command=lambda c=category: self._select_all(c, False)
-        ).pack(side="left", padx=4, pady=9)
-
-        # Progress bar (hidden by default)
-        prog = ctk.CTkProgressBar(parent, fg_color=T["progress_bg"], progress_color=T["accent"], height=6)
-        prog.set(0)
-        prog.pack(side="left", padx=16, pady=16, fill="x", expand=True)
-        prog.pack_forget()
-        self.__dict__[f"prog_{category}"] = prog
-
-        ctk.CTkButton(
-            parent, text="Disable Selected", font=("Segoe UI", 11, "bold"),
-            fg_color=T["bg_hover"], text_color=T["warning"], hover_color=T["bg_hover"],
-            border_width=1, border_color=T["warning"],
-            width=130, height=30,
-            command=lambda c=category: self._run_action(c, "disable")
-        ).pack(side="right", padx=4, pady=9)
-
-        ctk.CTkButton(
-            parent, text="Uninstall Selected", font=("Segoe UI", 11, "bold"),
-            fg_color=T["btn_danger"], text_color="#ffffff", hover_color="#cc0033",
-            width=140, height=30,
-            command=lambda c=category: self._run_action(c, "uninstall")
-        ).pack(side="right", padx=(4, 10), pady=9)
-
-    def _build_core_tab(self):
-        T = self.T
-        parent = self.tab_core
-
-        # Warning banner
-        warn_frame = ctk.CTkFrame(parent, fg_color="#1a0505", corner_radius=6, border_width=1, border_color=T["core_red"])
-        warn_frame.pack(fill="x", padx=8, pady=(8, 4))
-        ctk.CTkLabel(
-            warn_frame,
-            text="⛔  Core system apps — disabling may affect device stability. "
-                 "Each app requires individual confirmation. All changes are reversible via Re-enable or Panic Restore.",
-            font=("Segoe UI", 11), text_color=T["core_red"], wraplength=900
-        ).pack(padx=12, pady=8)
-
-        # Filter
-        filter_bar = ctk.CTkFrame(parent, fg_color="transparent")
-        filter_bar.pack(fill="x", pady=(0, 4), padx=8)
-
-        search_var = tk.StringVar()
+        # Search
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", lambda *a: self._filter_active_tab())
         ctk.CTkEntry(
-            filter_bar, placeholder_text="Search core packages...",
-            textvariable=search_var, width=240, height=30,
-            fg_color=T["bg_card"], border_color=T["border"], text_color=T["text"]
-        ).pack(side="left")
+            sb, placeholder_text="Search...",
+            textvariable=self.search_var,
+            width=200, height=28,
+            fg_color=T["bg_card"], border_color=T["border"],
+            text_color=T["text"]
+        ).pack(side="left", padx=(0, 6))
 
-        count_lbl = ctk.CTkLabel(filter_bar, text="0 packages", font=("Segoe UI", 11), text_color=T["text_muted"])
-        count_lbl.pack(side="left", padx=12)
-        self.count_lbl_core = count_lbl
-
-        scroll = ctk.CTkScrollableFrame(
-            parent, fg_color=T["bg"],
-            scrollbar_button_color=T["scrollbar"],
-            scrollbar_button_hover_color=T["core_red"]
+        self.count_lbl = ctk.CTkLabel(
+            sb, text="", font=("Segoe UI", 10), text_color=T["text_muted"]
         )
-        scroll.pack(fill="both", expand=True, padx=8, pady=4)
-        self.scroll_core = scroll
+        self.count_lbl.pack(side="left", padx=6)
 
-        # Action bar
-        action_bar = ctk.CTkFrame(parent, fg_color=T["bg_card"], height=48, corner_radius=6)
-        action_bar.pack(fill="x", padx=8, pady=(4, 8))
-        action_bar.pack_propagate(False)
-
-        ctk.CTkButton(
-            action_bar, text="Deselect All", font=("Segoe UI", 11),
-            fg_color=T["bg_hover"], text_color=T["text"], hover_color=T["border"],
-            width=95, height=30,
-            command=lambda: self._select_all("core", False)
-        ).pack(side="left", padx=(10, 4), pady=9)
-
-        self.prog_core = ctk.CTkProgressBar(action_bar, fg_color=T["progress_bg"], progress_color=T["core_red"], height=6)
-        self.prog_core.set(0)
-        self.prog_core.pack(side="left", padx=16, pady=16, fill="x", expand=True)
-        self.prog_core.pack_forget()
-
-        ctk.CTkButton(
-            action_bar, text="Disable Selected", font=("Segoe UI", 11, "bold"),
-            fg_color=T["bg_hover"], text_color=T["warning"], hover_color=T["bg_hover"],
-            border_width=1, border_color=T["warning"], width=130, height=30,
-            command=lambda: self._run_action("core", "disable")
-        ).pack(side="right", padx=4, pady=9)
-
-        ctk.CTkButton(
-            action_bar, text="Uninstall Selected", font=("Segoe UI", 11, "bold"),
-            fg_color=T["btn_danger"], text_color="#ffffff", hover_color="#cc0033",
-            width=140, height=30,
-            command=lambda: self._run_action("core", "uninstall")
-        ).pack(side="right", padx=(4, 10), pady=9)
-
-        search_var.trace_add("write", lambda *a: self._filter_tab("core", search_var.get()))
-        self.search_var_core = search_var
-
-    def _build_logs_tab(self):
+    def _build_bottombar(self):
         T = self.T
-        parent = self.tab_logs
+        bb = self.bottombar
 
-        toolbar = ctk.CTkFrame(parent, fg_color="transparent")
-        toolbar.pack(fill="x", padx=8, pady=(8, 4))
+        # START DEBLOAT — big green button like PurgeKit START PURGE
+        self.start_btn = ctk.CTkButton(
+            bb, text="⚡  START DEBLOAT",
+            font=("Segoe UI", 14, "bold"),
+            fg_color=T["accent"], text_color=T["btn_primary_text"],
+            hover_color=T["accent_dim"],
+            corner_radius=6, height=44,
+            command=self._on_start_debloat
+        )
+        self.start_btn.pack(side="left", padx=(12, 6), pady=9, fill="x", expand=True)
 
+        # Log toggle button (right side like PurgeKit)
+        self.log_toggle_btn = ctk.CTkButton(
+            bb, text="📋  Log",
+            font=("Segoe UI", 11),
+            fg_color=T["bg_card"], text_color=T["text"],
+            hover_color=T["bg_hover"],
+            width=80, height=44,
+            command=self._toggle_log_panel
+        )
+        self.log_toggle_btn.pack(side="right", padx=(6, 12), pady=9)
+
+        # Re-enable selected (right of start)
+        self.reenable_btn = ctk.CTkButton(
+            bb, text="↩  Re-enable",
+            font=("Segoe UI", 11),
+            fg_color=T["bg_card"], text_color=T["warning"],
+            hover_color=T["bg_hover"],
+            border_width=1, border_color=T["warning"],
+            width=120, height=44,
+            command=self._on_start_reenable
+        )
+        self.reenable_btn.pack(side="right", padx=(0, 6), pady=9)
+
+    def _build_log_panel(self):
+        T = self.T
+        lp = self.log_panel
+
+        hdr = ctk.CTkFrame(lp, fg_color=T["bg_card"], height=32, corner_radius=0)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text="LOG", font=("Segoe UI", 10, "bold"), text_color=T["accent"]).pack(side="left", padx=10, pady=6)
         ctk.CTkButton(
-            toolbar, text="Export Log", font=("Segoe UI", 11),
-            fg_color=T["bg_card"], text_color=T["text"], hover_color=T["bg_hover"],
-            width=100, height=28, command=self._export_log
-        ).pack(side="left", padx=(0, 8))
-
+            hdr, text="Export", font=("Segoe UI", 9),
+            fg_color="transparent", text_color=T["text_muted"],
+            hover_color=T["bg_hover"], width=50, height=22,
+            command=self._export_log
+        ).pack(side="right", padx=4)
         ctk.CTkButton(
-            toolbar, text="Clear Log", font=("Segoe UI", 11),
-            fg_color=T["bg_card"], text_color=T["text_muted"], hover_color=T["bg_hover"],
-            width=80, height=28, command=self._clear_full_log
-        ).pack(side="left")
+            hdr, text="Clear", font=("Segoe UI", 9),
+            fg_color="transparent", text_color=T["text_muted"],
+            hover_color=T["bg_hover"], width=44, height=22,
+            command=self._clear_log
+        ).pack(side="right")
 
-        self.full_log = ctk.CTkTextbox(
-            parent, fg_color=T["log_bg"], text_color=T["text"],
-            font=("Consolas", 12), corner_radius=6,
+        self.log_text = ctk.CTkTextbox(
+            lp, fg_color=T["log_bg"], text_color=T["text"],
+            font=("Consolas", 10), corner_radius=0,
             scrollbar_button_color=T["scrollbar"]
         )
-        self.full_log.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        self.full_log.configure(state="disabled")
+        self.log_text.pack(fill="both", expand=True, padx=0, pady=0)
+        self.log_text.configure(state="disabled")
 
-    def _build_settings_tab(self):
+    # ─── Tab switching ────────────────────────────────────────────────────────
+
+    def _switch_tab(self, key: str):
         T = self.T
-        parent = self.tab_settings
+        self._active_tab = key
 
-        scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
-        scroll.pack(fill="both", expand=True, padx=16, pady=8)
+        # Update tab button styles
+        for k, btn in self._tab_btns.items():
+            if k == key:
+                btn.configure(fg_color=T["accent"], text_color=T["btn_primary_text"])
+            else:
+                btn.configure(fg_color="transparent", text_color=T["text_muted"])
 
-        def section(title: str):
-            ctk.CTkLabel(scroll, text=title, font=("Segoe UI", 12, "bold"), text_color=T["accent"]).pack(anchor="w", pady=(12, 4))
+        # Show/hide sel_bar and info_strip based on tab type
+        app_tabs = ("system", "core", "user", "thirdparty")
+        if key in app_tabs:
+            self.sel_bar.pack(fill="x", padx=12, pady=(2, 0))
+            self.info_strip.pack(fill="x", padx=12, pady=(2, 0))
+            self.pkg_scroll.pack(fill="both", expand=True, padx=12, pady=(4, 0))
+            self._render_app_tab(key)
+        else:
+            self.sel_bar.pack_forget()
+            self.info_strip.pack_forget()
+            self.pkg_scroll.pack_forget()
+            # Show dedicated pages
+            if key == "logs":
+                self._show_logs_page()
+            elif key == "settings":
+                self._show_settings_page()
+            elif key == "about":
+                self._show_about_page()
+
+    def _show_logs_page(self):
+        """Show full log view in main content area."""
+        self._clear_page()
+        T = self.T
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
+        f.pack(fill="both", expand=True, padx=12, pady=8)
+
+        toolbar = ctk.CTkFrame(f, fg_color="transparent")
+        toolbar.pack(fill="x", pady=(0, 6))
+        ctk.CTkButton(toolbar, text="Export Log", width=100, height=28,
+                      fg_color=T["bg_card"], text_color=T["text"],
+                      hover_color=T["bg_hover"], command=self._export_log).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(toolbar, text="Clear", width=60, height=28,
+                      fg_color=T["bg_card"], text_color=T["text_muted"],
+                      hover_color=T["bg_hover"], command=self._clear_log).pack(side="left")
+
+        log_view = ctk.CTkTextbox(f, fg_color=T["log_bg"], text_color=T["text"],
+                                  font=("Consolas", 11), corner_radius=6,
+                                  scrollbar_button_color=T["scrollbar"])
+        log_view.pack(fill="both", expand=True)
+        log_view.configure(state="disabled")
+        # Mirror log content
+        try:
+            content = self.log_text.get("1.0", "end")
+            log_view.configure(state="normal")
+            log_view.insert("1.0", content)
+            log_view.see("end")
+            log_view.configure(state="disabled")
+        except Exception:
+            pass
+        self._page_frame = f
+
+    def _show_settings_page(self):
+        self._clear_page()
+        T = self.T
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
+        f.pack(fill="both", expand=True, padx=12, pady=8)
+
+        scroll = ctk.CTkScrollableFrame(f, fg_color="transparent")
+        scroll.pack(fill="both", expand=True)
+
+        def section(title):
+            ctk.CTkLabel(scroll, text=title, font=("Segoe UI", 12, "bold"),
+                         text_color=T["accent"]).pack(anchor="w", pady=(12, 2))
             ctk.CTkFrame(scroll, fg_color=T["border"], height=1).pack(fill="x", pady=(0, 8))
 
-        def row(label: str, widget_fn):
-            f = ctk.CTkFrame(scroll, fg_color="transparent")
-            f.pack(fill="x", pady=4)
-            ctk.CTkLabel(f, text=label, font=("Segoe UI", 12), text_color=T["text"], width=200, anchor="w").pack(side="left")
-            widget_fn(f)
+        def row(label, widget_fn):
+            fr = ctk.CTkFrame(scroll, fg_color="transparent")
+            fr.pack(fill="x", pady=4)
+            ctk.CTkLabel(fr, text=label, font=("Segoe UI", 11), text_color=T["text"],
+                         width=180, anchor="w").pack(side="left")
+            widget_fn(fr)
 
-        # ADB
         section("ADB Configuration")
         self.adb_path_var = tk.StringVar(value=self.adb.adb_path)
-
-        def adb_row(f):
-            e = ctk.CTkEntry(f, textvariable=self.adb_path_var, width=300, fg_color=T["bg_card"],
-                             border_color=T["border"], text_color=T["text"])
-            e.pack(side="left", padx=(0, 6))
-            ctk.CTkButton(f, text="Browse", width=70, height=28, fg_color=T["bg_hover"],
-                          text_color=T["text"], command=self._browse_adb).pack(side="left", padx=(0, 6))
-            ctk.CTkButton(f, text="Test ADB", width=80, height=28, fg_color=T["accent"],
+        def adb_row(fr):
+            ctk.CTkEntry(fr, textvariable=self.adb_path_var, width=280,
+                         fg_color=T["bg_card"], border_color=T["border"],
+                         text_color=T["text"]).pack(side="left", padx=(0,6))
+            ctk.CTkButton(fr, text="Browse", width=70, height=28, fg_color=T["bg_card"],
+                          text_color=T["text"], command=self._browse_adb).pack(side="left", padx=(0,6))
+            ctk.CTkButton(fr, text="Test ADB", width=80, height=28, fg_color=T["accent"],
                           text_color=T["btn_primary_text"], command=self._test_adb).pack(side="left")
-        row("ADB executable path", adb_row)
+        row("ADB executable", adb_row)
 
-        # Backup
         section("Backup")
         self.backup_path_var = tk.StringVar(value=self.debloater.backup_dir)
+        def bk_row(fr):
+            ctk.CTkEntry(fr, textvariable=self.backup_path_var, width=280,
+                         fg_color=T["bg_card"], border_color=T["border"],
+                         text_color=T["text"]).pack(side="left", padx=(0,6))
+            ctk.CTkButton(fr, text="Browse", width=70, height=28, fg_color=T["bg_card"],
+                          text_color=T["text"], command=self._browse_backup).pack(side="left", padx=(0,6))
+            ctk.CTkButton(fr, text="Open Folder", width=90, height=28, fg_color=T["bg_card"],
+                          text_color=T["text"],
+                          command=lambda: os.startfile(self.debloater.backup_dir)
+                          if os.path.exists(self.debloater.backup_dir) else None).pack(side="left")
+        row("Backup folder", bk_row)
 
-        def backup_row(f):
-            e = ctk.CTkEntry(f, textvariable=self.backup_path_var, width=300, fg_color=T["bg_card"],
-                             border_color=T["border"], text_color=T["text"])
-            e.pack(side="left", padx=(0, 6))
-            ctk.CTkButton(f, text="Browse", width=70, height=28, fg_color=T["bg_hover"],
-                          text_color=T["text"], command=self._browse_backup).pack(side="left")
-        row("Backup folder", backup_row)
-
-        ctk.CTkButton(
-            scroll, text="Open Backup Folder", font=("Segoe UI", 11),
-            fg_color=T["bg_card"], text_color=T["text"], hover_color=T["bg_hover"],
-            width=160, command=lambda: os.startfile(self.debloater.backup_dir) if os.path.exists(self.debloater.backup_dir) else None
-        ).pack(anchor="w", pady=4)
-
-        # Theme
         section("Appearance")
-
-        def theme_row(f):
+        def theme_row(fr):
             for name in THEMES:
                 t = get_theme(name)
-                ctk.CTkButton(
-                    f, text=name, width=80, height=28,
-                    fg_color=t["accent"], text_color=t["btn_primary_text"],
-                    command=lambda n=name: self._switch_theme(n)
-                ).pack(side="left", padx=(0, 6))
+                ctk.CTkButton(fr, text=name, width=80, height=28,
+                              fg_color=t["accent"], text_color=t["btn_primary_text"],
+                              command=lambda n=name: self._switch_theme(n)).pack(side="left", padx=(0,6))
         row("Theme", theme_row)
 
-        # Panic restore
         section("Emergency Recovery")
         ctk.CTkButton(
-            scroll, text="⚡  Panic Restore (latest backup)", font=("Segoe UI", 12, "bold"),
-            fg_color=T["core_red"], text_color="#ffffff", hover_color="#cc0000",
-            width=260, height=36,
+            scroll, text="⚡  Panic Restore (re-enable all from latest backup)",
+            font=("Segoe UI", 11, "bold"),
+            fg_color=T["core_red"], text_color="#ffffff",
+            hover_color="#cc0000", width=320, height=36,
             command=self._panic_restore
         ).pack(anchor="w", pady=8)
-        ctk.CTkLabel(
-            scroll,
-            text="Re-enables ALL packages from the most recent automatic backup.\n"
-                 "Use this if your device has issues after debloating.",
-            font=("Segoe UI", 11), text_color=T["text_muted"]
-        ).pack(anchor="w")
+        ctk.CTkLabel(scroll,
+                     text="Re-enables ALL packages from the most recent automatic backup.",
+                     font=("Segoe UI", 10), text_color=T["text_muted"]).pack(anchor="w")
 
-    def _build_about_tab(self):
+        self._page_frame = f
+
+    def _show_about_page(self):
+        self._clear_page()
         T = self.T
-        parent = self.tab_about
+        f = ctk.CTkFrame(self.content, fg_color="transparent")
+        f.pack(fill="both", expand=True, padx=12, pady=8)
 
-        outer = ctk.CTkScrollableFrame(parent, fg_color="transparent")
-        outer.pack(fill="both", expand=True)
+        scroll = ctk.CTkScrollableFrame(f, fg_color="transparent")
+        scroll.pack(fill="both", expand=True)
 
-        card = ctk.CTkFrame(outer, fg_color=T["bg_card"], corner_radius=12, border_width=1, border_color=T["border"])
-        card.pack(padx=40, pady=20, fill="x")
+        # Info card — exact PurgeKit layout
+        card = ctk.CTkFrame(scroll, fg_color=T["bg_card"], corner_radius=10,
+                            border_width=1, border_color=T["border"])
+        card.pack(fill="x", pady=(0, 12))
 
-        # Logo row
-        logo_row = ctk.CTkFrame(card, fg_color="transparent")
-        logo_row.pack(pady=(24, 4))
-        ctk.CTkLabel(logo_row, text="⬡", font=("Segoe UI", 44), text_color=T["accent"]).pack()
-        ctk.CTkLabel(logo_row, text=APP_NAME, font=("Segoe UI", 26, "bold"), text_color=T["text"]).pack()
-        ctk.CTkLabel(logo_row, text=f"{APP_VERSION}  —  Samsung Galaxy Debloater for Windows", font=("Segoe UI", 12), text_color=T["text_muted"]).pack(pady=(0, 4))
-
-        # Info rows
-        ctk.CTkFrame(card, fg_color=T["border"], height=1).pack(fill="x", padx=24, pady=12)
-
-        info_grid = ctk.CTkFrame(card, fg_color=T["bg"], corner_radius=8)
-        info_grid.pack(fill="x", padx=24, pady=(0, 8))
-
-        def info_row(label: str, value: str, value_color: str = None):
-            f = ctk.CTkFrame(info_grid, fg_color="transparent")
-            f.pack(fill="x", padx=16, pady=6)
-            ctk.CTkLabel(f, text=label, font=("Segoe UI", 11), text_color=T["text_muted"], width=120, anchor="w").pack(side="left")
-            ctk.CTkLabel(f, text=value, font=("Segoe UI", 11, "bold"), text_color=value_color or T["text"]).pack(side="left")
-
-        info_row("Built by", APP_AUTHOR)
-        info_row("Brand", APP_BRAND, T["accent"])
-        info_row("Location", "Chennai, India")
-        info_row("License", APP_LICENSE, T["accent"])
-        info_row("Platform", "Windows 10 / 11")
-        info_row("Version", APP_VERSION)
-
-        ctk.CTkFrame(card, fg_color=T["border"], height=1).pack(fill="x", padx=24, pady=12)
+        info_rows = [
+            ("Built by",  APP_AUTHOR),
+            ("Location",  "Chennai, India"),
+            ("Brand",     APP_BRAND),
+            ("License",   APP_LICENSE),
+            ("Platform",  "Windows 10 / 11"),
+            ("Version",   APP_VERSION),
+        ]
+        for label, value in info_rows:
+            row = ctk.CTkFrame(card, fg_color="transparent")
+            row.pack(fill="x", padx=20, pady=6)
+            ctk.CTkLabel(row, text=label, font=("Segoe UI", 11),
+                         text_color=T["text_muted"], width=100, anchor="w").pack(side="left")
+            ctk.CTkLabel(row, text=value, font=("Segoe UI", 11, "bold"),
+                         text_color=T["text"], anchor="w").pack(side="left")
 
         # GitHub
-        ctk.CTkLabel(card, text="GitHub Repository", font=("Segoe UI", 11), text_color=T["text_muted"]).pack()
+        ctk.CTkLabel(scroll, text="GitHub Repository",
+                     font=("Segoe UI", 10), text_color=T["text_muted"]).pack(pady=(8, 2))
         ctk.CTkButton(
-            card, text=APP_GITHUB, font=("Segoe UI", 11),
+            scroll, text=APP_GITHUB, font=("Segoe UI", 11),
             fg_color=T["accent"], text_color=T["btn_primary_text"],
-            hover_color=T["accent_dim"], width=420, height=34,
+            hover_color=T["accent_dim"], height=34,
             command=lambda: webbrowser.open(APP_GITHUB)
-        ).pack(pady=(4, 12))
+        ).pack(fill="x", pady=(0, 8))
 
-        # Donate
-        ctk.CTkFrame(card, fg_color=T["border"], height=1).pack(fill="x", padx=24, pady=(0, 12))
-        ctk.CTkLabel(card, text="☕  Support Development", font=("Segoe UI", 13, "bold"), text_color=T["text"]).pack()
-        ctk.CTkLabel(
-            card,
-            text="DebloatKit is free and open source. If it helped you, consider buying me a coffee!",
-            font=("Segoe UI", 11), text_color=T["text_muted"]
-        ).pack(pady=(2, 8))
+        # Version check placeholder
+        ver_frame = ctk.CTkFrame(scroll, fg_color=T["bg_card"], corner_radius=6,
+                                 border_width=1, border_color=T["border"])
+        ver_frame.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(ver_frame, text=f"☑  You are on the latest version ({APP_VERSION})",
+                     font=("Segoe UI", 11), text_color=T["text_muted"]).pack(padx=14, pady=10)
 
-        donate_row = ctk.CTkFrame(card, fg_color="transparent")
-        donate_row.pack(pady=(0, 16))
+        # Donate card — matches PurgeKit About exactly
+        don_card = ctk.CTkFrame(scroll, fg_color=T["bg_card"], corner_radius=10,
+                                border_width=1, border_color=T["border"])
+        don_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(don_card, text="⬡  Support DebloatKit",
+                     font=("Segoe UI", 13, "bold"), text_color=T["text"]).pack(pady=(14, 2))
+        ctk.CTkLabel(don_card,
+                     text="DebloatKit is free forever. If it saved you time, consider supporting!",
+                     font=("Segoe UI", 10), text_color=T["text_muted"]).pack(pady=(0, 8))
+
+        ctk.CTkLabel(don_card, text="🌐  International — Pay in $",
+                     font=("Segoe UI", 10, "bold"), text_color=T["accent"]).pack(pady=(0, 4))
+
         ctk.CTkButton(
-            donate_row, text="Buy Me a Coffee", font=("Segoe UI", 11, "bold"),
-            fg_color="#FFDD00", text_color="#000000", width=160, height=34,
-            command=lambda: webbrowser.open("https://buymeacoffee.com/yashwanthramsomireddy")
-        ).pack(side="left", padx=6)
+            don_card, text="💙  Donate via PayPal ($)",
+            font=("Segoe UI", 11, "bold"),
+            fg_color="#003087", text_color="#FFFFFF",
+            hover_color="#001f5b", height=36,
+            command=lambda: webbrowser.open("https://paypal.me/yash92duster")
+        ).pack(fill="x", padx=20, pady=(0, 6))
+
         ctk.CTkButton(
-            donate_row, text="UPI / GPay", font=("Segoe UI", 11),
-            fg_color=T["bg_hover"], text_color=T["text"], width=120, height=34,
-            command=lambda: messagebox.showinfo("UPI", "UPI ID: yashwanthramsomireddy@okaxis\n\nThank you for your support!")
-        ).pack(side="left", padx=6)
+            don_card, text="🟦  Donate via Razorpay (₹)",
+            font=("Segoe UI", 11, "bold"),
+            fg_color=T["accent"], text_color=T["btn_primary_text"],
+            hover_color=T["accent_dim"], height=36,
+            command=lambda: webbrowser.open("https://rzp.io/rzp/nsogoeD")
+        ).pack(fill="x", padx=20, pady=(0, 14))
 
         # Disclaimer
-        ctk.CTkFrame(card, fg_color=T["border"], height=1).pack(fill="x", padx=24, pady=(0, 12))
         ctk.CTkLabel(
-            card,
-            text="DebloatKit is an independent open-source tool not affiliated with, endorsed by, or connected to\n"
-                 "Samsung Electronics Co., Ltd. Samsung and Galaxy are trademarks of Samsung Electronics.\n"
-                 "Credits: XDA Developers community · @Vordx · Universal Android Debloater project",
-            font=("Segoe UI", 10), text_color=T["text_dim"], justify="center"
-        ).pack(pady=(0, 20))
+            scroll,
+            text="DebloatKit is 100% open source under the MIT License.\nFree to use, modify, and distribute.\n\n"
+                 "Not affiliated with Samsung Electronics Co., Ltd.\nSamsung and Galaxy are trademarks of Samsung Electronics.",
+            font=("Segoe UI", 9), text_color=T["text_dim"], justify="center"
+        ).pack(pady=8)
 
-    # ─── Package Rows ─────────────────────────────────────────────────────────
+        self._page_frame = f
 
-    def _build_package_row(self, parent, entry: AppEntry, compact: bool = True) -> ctk.CTkFrame:
-        T = self.T
+    def _clear_page(self):
+        """Remove any floating page frame."""
+        if hasattr(self, "_page_frame") and self._page_frame.winfo_exists():
+            self._page_frame.destroy()
+
+    # ─── Package row (PurgeKit style) ─────────────────────────────────────────
+
+    def _build_package_row(self, parent, entry: AppEntry) -> ctk.CTkFrame:
+        T    = self.T
+        comp = not self._spacious_mode   # compact = True when spacious_mode=False
+
         is_keep = entry.risk == "KEEP"
         is_core = entry.risk == "CORE"
-        row_h = 36 if compact else 56
+        row_h   = 36 if comp else 64
 
         row = ctk.CTkFrame(
             parent,
             fg_color=T["bg_card"] if entry.state == "enabled" else T["disabled_bg"],
             corner_radius=4, height=row_h
         )
-        row.pack(fill="x", pady=1, padx=2)
+        row.pack(fill="x", pady=1, padx=0)
         row.pack_propagate(False)
 
         # Checkbox
+        cb_wrap = ctk.CTkFrame(row, fg_color="transparent", width=32)
+        cb_wrap.pack(side="left", padx=(8, 0))
+        cb_wrap.pack_propagate(False)
         var = tk.BooleanVar(value=entry.checked)
-        cb = ctk.CTkCheckBox(
-            row, variable=var, text="",
-            width=20,
+        ctk.CTkCheckBox(
+            cb_wrap, variable=var, text="",
             checkbox_width=16, checkbox_height=16,
             fg_color=T["core_red"] if is_core else T["accent"],
             hover_color=T["accent_dim"],
             state="disabled" if is_keep else "normal",
             command=lambda e=entry, v=var: self._on_check(e, v, is_core)
-        )
-        cb.pack(side="left", padx=(8, 4), pady=10)
+        ).pack(expand=True)
         entry._var = var
-        entry._row = row
+        entry._row_frame = row
 
-        # Risk badge
-        risk_color = get_risk_color(entry.risk, self.current_theme_name)
-        badge_frame = ctk.CTkFrame(row, fg_color="transparent", width=100)
-        badge_frame.pack(side="left", padx=4)
-        badge_frame.pack_propagate(False)
-        ctk.CTkLabel(
-            badge_frame,
-            text=get_risk_label(entry.risk),
-            font=("Segoe UI", 10, "bold"),
-            text_color=risk_color
-        ).pack(anchor="w", pady=10)
-
-        # Name + package
-        info_frame = ctk.CTkFrame(row, fg_color="transparent")
-        info_frame.pack(side="left", fill="x", expand=True, padx=4)
-
-        name_text = entry.name if entry.in_db else f"{entry.name} *"
-        ctk.CTkLabel(
-            info_frame,
-            text=name_text,
-            font=("Segoe UI", 12, "bold"),
-            text_color=T["text_dim"] if is_keep else T["text"],
-            anchor="w"
-        ).pack(anchor="w", pady=(8, 0) if not compact else 0, padx=2)
-
-        if not compact:
-            ctk.CTkLabel(
-                info_frame,
-                text=entry.pkg,
-                font=("Consolas", 10),
-                text_color=T["text_muted"],
-                anchor="w"
-            ).pack(anchor="w", padx=2)
-            if entry.description:
-                ctk.CTkLabel(
-                    info_frame,
-                    text=entry.description,
-                    font=("Segoe UI", 10),
-                    text_color=T["text_dim"],
-                    anchor="w"
-                ).pack(anchor="w", padx=2, pady=(0, 6))
-
-        # Package name (compact — show on hover via tooltip approach)
-        if compact:
-            ctk.CTkLabel(
-                info_frame,
-                text=entry.pkg,
-                font=("Consolas", 10),
-                text_color=T["text_dim"],
-                anchor="w"
-            ).pack(anchor="w", pady=2)
-
-        # Subcategory
-        if entry.subcategory:
-            ctk.CTkLabel(
-                row,
-                text=entry.subcategory,
-                font=("Segoe UI", 10),
-                text_color=T["text_dim"],
-                width=110, anchor="e"
-            ).pack(side="right", padx=4)
-
-        # State indicator
+        # Right-side widgets first (state + re-enable)
         state_color = get_state_color(entry.state)
         state_lbl = ctk.CTkLabel(
             row, text=entry.state.title(),
-            font=("Segoe UI", 10, "bold"),
-            text_color=state_color, width=70, anchor="e"
+            font=("Segoe UI", 9, "bold"),
+            text_color=state_color, width=72, anchor="e"
         )
-        state_lbl.pack(side="right", padx=4)
+        state_lbl.pack(side="right", padx=(2, 10))
         entry._state_lbl = state_lbl
-        entry._row_frame = row
 
-        # Re-enable button (shows when disabled/uninstalled)
         if entry.state in ("disabled", "uninstalled"):
             re_btn = ctk.CTkButton(
-                row, text="Re-enable", font=("Segoe UI", 10),
+                row, text="Re-enable", font=("Segoe UI", 9),
                 fg_color=T["accent"], text_color=T["btn_primary_text"],
-                hover_color=T["accent_dim"], width=80, height=24,
+                hover_color=T["accent_dim"], width=80, height=22,
                 command=lambda e=entry: self._reenable_single(e)
             )
             re_btn.pack(side="right", padx=4)
             entry._re_btn = re_btn
 
+        # Risk badge
+        risk_color = get_risk_color(entry.risk, self.current_theme_name)
+        risk_wrap = ctk.CTkFrame(row, fg_color="transparent", width=110)
+        risk_wrap.pack(side="left", padx=(4, 0))
+        risk_wrap.pack_propagate(False)
+        ctk.CTkLabel(
+            risk_wrap,
+            text=get_risk_label(entry.risk),
+            font=("Segoe UI", 9, "bold"),
+            text_color=risk_color, anchor="w"
+        ).pack(fill="x", expand=True, padx=2)
+
+        # Info (fills remaining space)
+        info = ctk.CTkFrame(row, fg_color="transparent")
+        info.pack(side="left", fill="both", expand=True, padx=(4, 2))
+
+        name_text = entry.name if entry.in_db else f"{entry.name} *"
+
+        if comp:
+            # PurgeKit compact: name bold LEFT, path/pkg dim RIGHT
+            ctk.CTkLabel(
+                info, text=name_text,
+                font=("Segoe UI", 11, "bold"),
+                text_color=T["text_dim"] if is_keep else T["text"],
+                anchor="w"
+            ).pack(side="left", padx=(0, 8))
+
+            ctk.CTkLabel(
+                info, text=entry.pkg,
+                font=("Consolas", 9),
+                text_color=T["text_dim"], anchor="e"
+            ).pack(side="right", padx=(0, 4))
+        else:
+            # Spacious: 3 lines
+            ctk.CTkLabel(
+                info, text=name_text,
+                font=("Segoe UI", 12, "bold"),
+                text_color=T["text_dim"] if is_keep else T["text"],
+                anchor="w"
+            ).pack(anchor="w", padx=2, pady=(6, 0))
+            ctk.CTkLabel(
+                info, text=entry.pkg,
+                font=("Consolas", 9),
+                text_color=T["text_muted"], anchor="w"
+            ).pack(anchor="w", padx=2)
+            if entry.description:
+                ctk.CTkLabel(
+                    info, text=entry.description,
+                    font=("Segoe UI", 9),
+                    text_color=T["text_dim"], anchor="w", wraplength=520
+                ).pack(anchor="w", padx=2, pady=(0, 4))
+
         return row
 
-    # ─── Tab Rendering ────────────────────────────────────────────────────────
+    # ─── Section header (PurgeKit style — green bar with X / ✓) ──────────────
 
-    def _render_tab(self, category: str, entries: list[AppEntry] = None):
+    def _build_section_header(self, parent, title: str, category: str) -> ctk.CTkFrame:
         T = self.T
-        compact = self.compact_var.get()
-        scroll = self.__dict__.get(f"scroll_{category}")
-        if not scroll:
-            return
+        hdr = ctk.CTkFrame(parent, fg_color=T["accent"], corner_radius=4, height=34)
+        hdr.pack(fill="x", pady=(8, 2))
+        hdr.pack_propagate(False)
 
-        for w in scroll.winfo_children():
+        # Icon + title
+        ctk.CTkLabel(
+            hdr, text=f"⚙  {title}",
+            font=("Segoe UI", 11, "bold"),
+            text_color=T["btn_primary_text"], anchor="w"
+        ).pack(side="left", padx=12)
+
+        # ✓ select section button
+        ctk.CTkButton(
+            hdr, text="✓", width=28, height=22,
+            fg_color=T["accent_dim"], text_color=T["btn_primary_text"],
+            hover_color=T["accent"], corner_radius=4,
+            command=lambda c=category: self._select_all(c, True)
+        ).pack(side="right", padx=(2, 6))
+
+        # ✕ deselect section button
+        ctk.CTkButton(
+            hdr, text="✕", width=28, height=22,
+            fg_color=T["accent_dim"], text_color=T["btn_primary_text"],
+            hover_color=T["accent"], corner_radius=4,
+            command=lambda c=category: self._select_all(c, False)
+        ).pack(side="right", padx=2)
+
+        return hdr
+
+    # ─── Render tab ───────────────────────────────────────────────────────────
+
+    def _render_app_tab(self, category: str, entries: list[AppEntry] = None):
+        T = self.T
+
+        # Clear scroll area
+        for w in self.pkg_scroll.winfo_children():
             w.destroy()
 
         entries = entries or self.app_data.get(category, [])
+
         if not entries:
             ctk.CTkLabel(
-                scroll,
-                text="No packages found. Scan your device first." if not self.device_info else "No packages in this category.",
+                self.pkg_scroll,
+                text="No packages found. Scan your device first." if not self.device_info
+                     else "No packages in this category.",
                 font=("Segoe UI", 12), text_color=T["text_muted"]
             ).pack(pady=40)
-            self._update_count(category, 0)
+            self.count_lbl.configure(text="0 packages")
             return
 
         # Group by subcategory
@@ -722,56 +771,58 @@ class DebloatKit(ctk.CTk):
 
         total = 0
         for subcat, items in subcats.items():
-            # Subcategory header
-            hdr = ctk.CTkFrame(scroll, fg_color="transparent")
-            hdr.pack(fill="x", pady=(8, 2))
-            ctk.CTkLabel(
-                hdr, text=subcat.upper(),
-                font=("Segoe UI", 10, "bold"),
-                text_color=T["accent"] if category != "core" else T["core_red"]
-            ).pack(side="left", padx=4)
-            ctk.CTkFrame(hdr, fg_color=T["border"], height=1).pack(side="left", fill="x", expand=True, padx=4, pady=5)
-            ctk.CTkLabel(hdr, text=str(len(items)), font=("Segoe UI", 10), text_color=T["text_dim"]).pack(side="right", padx=4)
-
+            self._build_section_header(self.pkg_scroll, subcat, category)
             for entry in items:
-                self._build_package_row(scroll, entry, compact=compact)
+                self._build_package_row(self.pkg_scroll, entry)
                 total += 1
 
-        self._update_count(category, total)
-        self._update_subcat_filter(category)
+        self.count_lbl.configure(text=f"{total} packages")
 
-    def _update_count(self, category: str, count: int):
-        lbl = self.__dict__.get(f"count_lbl_{category}")
-        if lbl:
-            lbl.configure(text=f"{count} packages")
+        # Update subcategory filter
+        subcats_list = sorted(set(e.subcategory for e in self.app_data.get(category, []) if e.subcategory))
+        self.subcat_menu.configure(values=["All"] + subcats_list)
 
-    def _update_subcat_filter(self, category: str):
-        menu = self.__dict__.get(f"subcat_menu_{category}")
-        if not menu:
-            return
-        entries = self.app_data.get(category, [])
-        subcats = sorted(set(e.subcategory for e in entries if e.subcategory))
-        menu.configure(values=["All"] + subcats)
-
-    def _filter_tab(self, category: str, query: str = ""):
-        entries = self.app_data.get(category, [])
-        subcat_var = self.__dict__.get(f"subcat_var_{category}")
-        selected_subcat = subcat_var.get() if subcat_var else "All"
-
-        filtered = entries
-        if selected_subcat != "All":
-            filtered = [e for e in filtered if e.subcategory == selected_subcat]
-        if query:
-            q = query.lower()
-            filtered = [e for e in filtered if q in e.pkg.lower() or q in e.name.lower()]
-
-        self._render_tab(category, filtered)
+        # Update info strip
+        checked = sum(1 for e in entries if getattr(e, "checked", False))
+        self.info_lbl.configure(
+            text=f"💾  {total} packages loaded  ·  {checked} selected"
+            if self.device_info else f"💾  No device scanned yet"
+        )
 
     def _refresh_all_tabs(self):
-        for cat in ("system", "core", "user", "thirdparty"):
-            self._render_tab(cat)
+        """Rebuild current tab with updated compact state."""
+        if self._active_tab in ("system", "core", "user", "thirdparty"):
+            self._render_app_tab(self._active_tab)
 
-    # ─── Checkbox / Selection ────────────────────────────────────────────────
+    # ─── Compact toggle ───────────────────────────────────────────────────────
+
+    def _on_compact_toggle(self):
+        self._spacious_mode = not self.compact_var.get()
+        self._refresh_all_tabs()
+
+    def _select_all(self, category: str, state: bool):
+        for e in self.app_data.get(category, []):
+            if e.risk not in ("KEEP",):
+                if not state or e.risk != "CORE":
+                    e.checked = state
+                    if hasattr(e, "_var"):
+                        e._var.set(state)
+
+    def _filter_active_tab(self):
+        cat     = self._active_tab
+        entries = self.app_data.get(cat, [])
+        subcat  = self.subcat_var.get()
+        query   = self.search_var.get().lower()
+
+        filtered = entries
+        if subcat != "All":
+            filtered = [e for e in filtered if e.subcategory == subcat]
+        if query:
+            filtered = [e for e in filtered if query in e.pkg.lower() or query in e.name.lower()]
+
+        self._render_app_tab(cat, filtered)
+
+    # ─── Core warning dialog ──────────────────────────────────────────────────
 
     def _on_check(self, entry: AppEntry, var: tk.BooleanVar, is_core: bool):
         if is_core and var.get():
@@ -788,106 +839,105 @@ class DebloatKit(ctk.CTk):
         win.grab_set()
         win.resizable(False, False)
 
-        ctk.CTkLabel(win, text="⛔  Core System App", font=("Segoe UI", 16, "bold"), text_color=T["core_red"]).pack(pady=(20, 4))
-        ctk.CTkLabel(win, text=f"{entry.name}", font=("Segoe UI", 13, "bold"), text_color=T["text"]).pack()
-        ctk.CTkLabel(win, text=entry.pkg, font=("Consolas", 10), text_color=T["text_muted"]).pack(pady=(0, 8))
+        ctk.CTkLabel(win, text="⛔  Core System App",
+                     font=("Segoe UI", 16, "bold"), text_color=T["core_red"]).pack(pady=(20, 4))
+        ctk.CTkLabel(win, text=f"{entry.name}",
+                     font=("Segoe UI", 13, "bold"), text_color=T["text"]).pack()
+        ctk.CTkLabel(win, text=entry.pkg,
+                     font=("Consolas", 10), text_color=T["text_muted"]).pack(pady=(0, 8))
 
-        msg_frame = ctk.CTkFrame(win, fg_color="#1a0505", corner_radius=8, border_width=1, border_color=T["core_red"])
+        msg_frame = ctk.CTkFrame(win, fg_color="#1a0505", corner_radius=8,
+                                 border_width=1, border_color=T["core_red"])
         msg_frame.pack(fill="x", padx=20, pady=4)
         ctk.CTkLabel(
             msg_frame,
             text=f"{entry.description}\n\n"
-                 "⚠ Disabling this may affect device stability.\n"
-                 "✓ Fully reversible — re-enable anytime while device is connected.",
+                 "⚠ Disabling may affect device stability.\n"
+                 "✓ Fully reversible — re-enable anytime while connected.",
             font=("Segoe UI", 11), text_color=T["text"], wraplength=440, justify="left"
         ).pack(padx=12, pady=10)
 
         btn_row = ctk.CTkFrame(win, fg_color="transparent")
-        btn_row.pack(pady=16)
+        btn_row.pack(pady=14)
 
-        def on_cancel():
-            var.set(False)
-            entry.checked = False
-            win.destroy()
+        def cancel():
+            var.set(False); entry.checked = False; win.destroy()
+        def proceed():
+            entry.checked = True; win.destroy()
 
-        def on_proceed():
-            entry.checked = True
-            win.destroy()
-
-        ctk.CTkButton(btn_row, text="Cancel", width=120, fg_color=T["bg_hover"], text_color=T["text"], command=on_cancel).pack(side="left", padx=8)
-        ctk.CTkButton(btn_row, text="I understand, proceed", width=160, fg_color=T["core_red"], text_color="#ffffff", command=on_proceed).pack(side="left", padx=8)
-
-    def _select_all(self, category: str, state: bool):
-        entries = self.app_data.get(category, [])
-        for e in entries:
-            if e.risk != "KEEP":
-                if not state or e.risk != "CORE":
-                    e.checked = state
-                    if hasattr(e, "_var"):
-                        e._var.set(state)
+        ctk.CTkButton(btn_row, text="Cancel", width=120,
+                      fg_color=T["bg_hover"], text_color=T["text"],
+                      command=cancel).pack(side="left", padx=8)
+        ctk.CTkButton(btn_row, text="I understand, proceed", width=180,
+                      fg_color=T["core_red"], text_color="#ffffff",
+                      command=proceed).pack(side="left", padx=8)
 
     # ─── Actions ──────────────────────────────────────────────────────────────
 
+    def _on_start_debloat(self):
+        self._run_action(self._active_tab, "uninstall")
+
+    def _on_start_reenable(self):
+        self._run_action(self._active_tab, "enable")
+
     def _run_action(self, category: str, action: str):
         if self._action_running:
-            messagebox.showwarning("Busy", "An action is already running. Please wait.")
+            messagebox.showwarning("Busy", "An action is already running.")
             return
         if not self.device_info:
             messagebox.showerror("No Device", "Connect your device first.")
             return
 
-        entries = self.app_data.get(category, [])
+        entries  = self.app_data.get(category, [])
         selected = [e for e in entries if e.checked and e.risk != "KEEP"]
         if not selected:
             messagebox.showinfo("Nothing Selected", "Select at least one package first.")
             return
 
-        verb = "disable" if action == "disable" else "uninstall"
+        verb = "uninstall" if action == "uninstall" else "re-enable"
         if not messagebox.askyesno(
             f"Confirm {verb.title()}",
-            f"{'[DRY RUN] ' if self.dry_run_var.get() else ''}"
-            f"{verb.title()} {len(selected)} selected package(s)?\n\n"
-            "All changes are reversible via Re-enable or Panic Restore."
+            f"{verb.title()} {len(selected)} package(s)?\n\nAll changes are reversible."
         ):
             return
 
         self._action_running = True
-        prog = self.__dict__.get(f"prog_{category}")
-        if prog:
-            prog.pack(side="left", padx=16, pady=16, fill="x", expand=True)
-            prog.set(0)
-
-        all_entries = [e for cat_entries in self.app_data.values() for e in cat_entries]
+        self.start_btn.configure(state="disabled", text="Running...")
+        self.progress_bar.set(0)
+        self.progress_bar.pack(side="left", padx=8, pady=8)
+        all_entries = [e for cat in self.app_data.values() for e in cat]
 
         def progress_cb(val, msg):
-            self.after(0, lambda: prog.set(val) if prog else None)
-            self._log(msg, "info")
+            self.after(0, lambda: self.progress_bar.set(val))
+            self.after(0, lambda: self.status_text.configure(text=msg))
 
         def result_cb(entry: AppEntry, result):
             def update():
-                if hasattr(entry, "_state_lbl"):
+                if hasattr(entry, "_state_lbl") and entry._state_lbl.winfo_exists():
                     entry._state_lbl.configure(
                         text=entry.state.title(),
                         text_color=get_state_color(entry.state)
                     )
-                if hasattr(entry, "_row_frame") and entry.state in ("disabled", "uninstalled"):
-                    entry._row_frame.configure(fg_color=self.T["disabled_bg"])
+                if hasattr(entry, "_row_frame") and entry._row_frame.winfo_exists():
+                    if entry.state in ("disabled", "uninstalled"):
+                        entry._row_frame.configure(fg_color=self.T["disabled_bg"])
             self.after(0, update)
 
         def run():
-            if action == "disable":
-                results = self.debloater.disable_packages(selected, all_entries, progress_cb, result_cb)
-            else:
+            if action == "uninstall":
                 results = self.debloater.uninstall_packages(selected, all_entries, progress_cb, result_cb)
+            else:
+                results = self.debloater.restore_packages(selected, progress_cb, result_cb)
 
             summary = self.debloater.get_summary(results)
-            self.after(0, lambda: self._show_summary(summary, action))
-            self.after(0, lambda: prog.pack_forget() if prog else None)
+            self.after(0, lambda: self._show_summary(summary, verb))
+            self.after(0, lambda: self.start_btn.configure(state="normal", text="⚡  START DEBLOAT"))
+            self.after(0, lambda: self.status_text.configure(
+                text=f"Done — {summary['success']} succeeded · {summary['failed']} failed"
+            ))
             self._action_running = False
 
-            # SoundAlive hint
-            diag_pkg = "com.sec.android.diagmonagent"
-            if any(e.pkg == diag_pkg for e in selected):
+            if any(e.pkg == "com.sec.android.diagmonagent" for e in selected):
                 self.after(0, self._offer_soundalive_fix)
 
         threading.Thread(target=run, daemon=True).start()
@@ -896,68 +946,108 @@ class DebloatKit(ctk.CTk):
         if not self.device_info:
             messagebox.showerror("No Device", "Device not connected.")
             return
-
         def run():
             if entry.state == "disabled":
-                ok, msg = self.adb.enable_package(entry.pkg)
+                ok, _ = self.adb.enable_package(entry.pkg)
             else:
-                ok, msg = self.adb.reinstall_package(entry.pkg)
-
-            def update():
-                if ok:
-                    entry.state = "enabled"
-                    if hasattr(entry, "_state_lbl"):
+                ok, _ = self.adb.reinstall_package(entry.pkg)
+            if ok:
+                entry.state = "enabled"
+                def update():
+                    if hasattr(entry, "_state_lbl") and entry._state_lbl.winfo_exists():
                         entry._state_lbl.configure(text="Enabled", text_color=get_state_color("enabled"))
-                    if hasattr(entry, "_row_frame"):
+                    if hasattr(entry, "_row_frame") and entry._row_frame.winfo_exists():
                         entry._row_frame.configure(fg_color=self.T["bg_card"])
-                    if hasattr(entry, "_re_btn"):
+                    if hasattr(entry, "_re_btn") and entry._re_btn.winfo_exists():
                         entry._re_btn.destroy()
-            self.after(0, update)
-
+                self.after(0, update)
         threading.Thread(target=run, daemon=True).start()
-
-    def _offer_soundalive_fix(self):
-        if messagebox.askyesno(
-            "SoundAlive Fix",
-            "You disabled the Diagnostic Monitor (diagmonagent).\n\n"
-            "Run SoundAlive flush to fix potential audio issues?\n"
-            "(Recommended — clears SoundAlive cache)"
-        ):
-            self.debloater.soundalive_fix()
 
     def _show_summary(self, summary: dict, action: str):
         T = self.T
         win = ctk.CTkToplevel(self)
         win.title("Action Complete")
-        win.geometry("380x220")
+        win.geometry("360x200")
         win.configure(fg_color=T["bg"])
         win.grab_set()
 
-        ctk.CTkLabel(win, text="✓ Complete", font=("Segoe UI", 16, "bold"), text_color=T["success"]).pack(pady=(20, 8))
-
+        ctk.CTkLabel(win, text="✓  Complete",
+                     font=("Segoe UI", 15, "bold"), text_color=T["success"]).pack(pady=(18, 8))
         info = ctk.CTkFrame(win, fg_color=T["bg_card"], corner_radius=8)
         info.pack(fill="x", padx=24, pady=4)
 
         def row(label, value, color=None):
-            f = ctk.CTkFrame(info, fg_color="transparent")
-            f.pack(fill="x", padx=12, pady=3)
-            ctk.CTkLabel(f, text=label, font=("Segoe UI", 11), text_color=T["text_muted"]).pack(side="left")
-            ctk.CTkLabel(f, text=str(value), font=("Segoe UI", 11, "bold"), text_color=color or T["text"]).pack(side="right")
+            fr = ctk.CTkFrame(info, fg_color="transparent")
+            fr.pack(fill="x", padx=12, pady=3)
+            ctk.CTkLabel(fr, text=label, font=("Segoe UI", 10), text_color=T["text_muted"]).pack(side="left")
+            ctk.CTkLabel(fr, text=str(value), font=("Segoe UI", 10, "bold"),
+                         text_color=color or T["text"]).pack(side="right")
 
-        row("Action", action.title())
-        row("Total", summary["total"])
+        row("Action",    action.title())
         row("Succeeded", summary["success"], T["success"])
         if summary["failed"] > 0:
             row("Failed", summary["failed"], T["error"])
-        if not summary["dry_run"]:
-            row("Backup", "Saved automatically", T["accent"])
+        row("Backup",    "Saved automatically", T["accent"])
+
+        ctk.CTkButton(win, text="Close", fg_color=T["accent"],
+                      text_color=T["btn_primary_text"], width=100,
+                      command=win.destroy).pack(pady=14)
+
+    def _offer_soundalive_fix(self):
+        if messagebox.askyesno("SoundAlive Fix",
+                               "Diagnostic Monitor was removed.\n\nRun SoundAlive flush to fix audio? (Recommended)"):
+            self.debloater.soundalive_fix()
+
+    # ─── Log panel ────────────────────────────────────────────────────────────
+
+    def _toggle_log_panel(self):
+        if self.log_visible:
+            self.log_panel.pack_forget()
+            self.log_visible = False
+            self.log_toggle_btn.configure(fg_color=self.T["bg_card"])
         else:
-            row("Mode", "DRY RUN — no changes made", T["warning"])
+            self.log_panel.pack(side="right", fill="y", in_=self.body)
+            self.log_visible = True
+            self.log_toggle_btn.configure(fg_color=self.T["accent"])
 
-        ctk.CTkButton(win, text="Close", fg_color=T["accent"], text_color=T["btn_primary_text"],
-                      width=100, command=win.destroy).pack(pady=16)
+    def _log(self, message: str, level: str = "info"):
+        T = self.T
+        color_map = {
+            "info":    T["log_info"],
+            "success": T["log_success"],
+            "warning": T["log_warning"],
+            "error":   T["log_error"],
+        }
+        ts   = datetime.now().strftime("%H:%M:%S")
+        line = f"[{ts}] {message}\n"
 
-    # ─── Device Polling & Scan ────────────────────────────────────────────────
+        def update():
+            if hasattr(self, "log_text") and self.log_text.winfo_exists():
+                self.log_text.configure(state="normal")
+                self.log_text.insert("end", line)
+                self.log_text.see("end")
+                self.log_text.configure(state="disabled")
+        self.after(0, update)
+
+    def _clear_log(self):
+        if hasattr(self, "log_text"):
+            self.log_text.configure(state="normal")
+            self.log_text.delete("1.0", "end")
+            self.log_text.configure(state="disabled")
+
+    def _export_log(self):
+        path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt")],
+            initialfile=f"DebloatKit_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
+        if path and hasattr(self, "log_text"):
+            content = self.log_text.get("1.0", "end")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            self._log(f"Log exported: {path}", "success")
+
+    # ─── Device polling ───────────────────────────────────────────────────────
 
     def _start_device_polling(self):
         self.adb.start_polling(
@@ -967,164 +1057,122 @@ class DebloatKit(ctk.CTk):
         )
 
     def _on_device_status(self, status: str):
-        colors = {"no_device": "#444444", "unauthorized": "#ffab00", "ready": "#00e676"}
+        colors = {"no_device": "#333333", "unauthorized": "#ffab00", "ready": "#00e676"}
         labels = {"no_device": "No Device", "unauthorized": "Unauthorized", "ready": "Connected"}
-        color = colors.get(status, "#444444")
-        label = labels.get(status, status)
 
         def update():
-            self.status_dot.configure(text_color=color)
-            self.status_label.configure(text=label)
+            self.status_dot.configure(text_color=colors.get(status, "#333333"))
+            self.status_label.configure(text=labels.get(status, status))
             if status == "unauthorized":
                 self._show_usb_guide()
         self.after(0, update)
 
     def _on_device_connected(self, info: DeviceInfo):
         self.device_info = info
-
         def update():
             self.dev_model_lbl.configure(
-                text=f"{info.brand} {info.model}",
-                text_color=self.T["text"]
+                text=f"{info.brand} {info.model}", text_color=self.T["text"]
             )
-            bat_color = self.T["error"] if info.battery_level < 20 else self.T["text_muted"]
             self.dev_info_lbl.configure(
                 text=f"Android {info.android_version}  ·  One UI {info.oneui_version or '?'}  ·  API {info.api_level}  ·  {info.get_era_label()}",
                 text_color=self.T["text_muted"]
             )
+            bat_color = self.T["error"] if info.battery_level < 20 else self.T["text_muted"]
             self.bat_lbl.configure(text=f"🔋 {info.battery_level}%", text_color=bat_color)
             self.scan_btn.configure(state="normal")
+            self.status_text.configure(text=f"Device ready — {info.brand} {info.model}")
         self.after(0, update)
 
     def _on_device_disconnected(self):
         self.device_info = None
-
         def update():
             self.dev_model_lbl.configure(text="No device connected", text_color=self.T["text_muted"])
-            self.dev_info_lbl.configure(text="Connect your device via USB and enable USB Debugging", text_color=self.T["text_dim"])
+            self.dev_info_lbl.configure(
+                text="Plug in your Galaxy device and enable USB Debugging",
+                text_color=self.T["text_dim"]
+            )
             self.bat_lbl.configure(text="")
             self.scan_btn.configure(state="disabled")
+            self.status_text.configure(text="No device connected.")
         self.after(0, update)
-
-    def _refresh_device_card(self):
-        if self.device_info:
-            self._on_device_connected(self.device_info)
 
     def _show_usb_guide(self):
         T = self.T
         win = ctk.CTkToplevel(self)
         win.title("Enable USB Debugging")
-        win.geometry("500x420")
+        win.geometry("500x400")
         win.configure(fg_color=T["bg"])
 
-        ctk.CTkLabel(win, text="Enable USB Debugging", font=("Segoe UI", 16, "bold"), text_color=T["accent"]).pack(pady=(20, 12))
+        ctk.CTkLabel(win, text="Enable USB Debugging",
+                     font=("Segoe UI", 15, "bold"), text_color=T["accent"]).pack(pady=(18, 10))
 
         steps = [
-            ("1", "Open Settings on your Galaxy device"),
-            ("2", "Go to About Phone → Software Information"),
-            ("3", "Tap Build Number 7 times to unlock Developer Options"),
-            ("4", "Go back to Settings → Developer Options"),
-            ("5", "Enable USB Debugging"),
-            ("6", "Connect via USB — tap Allow on your phone"),
-            ("7", "DebloatKit will detect your device automatically"),
+            "Open Settings on your Galaxy device",
+            "Go to About Phone → Software Information",
+            "Tap Build Number 7 times to unlock Developer Options",
+            "Go back to Settings → Developer Options",
+            "Enable USB Debugging",
+            "Connect via USB — tap Allow on your phone",
+            "DebloatKit detects your device automatically",
         ]
-
-        for num, step in steps:
+        for i, step in enumerate(steps, 1):
             row = ctk.CTkFrame(win, fg_color=T["bg_card"], corner_radius=6)
-            row.pack(fill="x", padx=24, pady=2)
-            ctk.CTkLabel(row, text=num, font=("Segoe UI", 11, "bold"), text_color=T["accent"], width=24).pack(side="left", padx=10, pady=6)
-            ctk.CTkLabel(row, text=step, font=("Segoe UI", 11), text_color=T["text"], anchor="w").pack(side="left", padx=4)
+            row.pack(fill="x", padx=22, pady=2)
+            ctk.CTkLabel(row, text=str(i), font=("Segoe UI", 11, "bold"),
+                         text_color=T["accent"], width=24).pack(side="left", padx=10, pady=6)
+            ctk.CTkLabel(row, text=step, font=("Segoe UI", 11),
+                         text_color=T["text"], anchor="w").pack(side="left", padx=4)
 
-        ctk.CTkButton(win, text="Got it", fg_color=T["accent"], text_color=T["btn_primary_text"],
-                      width=120, command=win.destroy).pack(pady=16)
+        ctk.CTkButton(win, text="Got it", fg_color=T["accent"],
+                      text_color=T["btn_primary_text"], width=120,
+                      command=win.destroy).pack(pady=14)
 
     def _start_scan(self):
-        if self._scanning:
-            return
+        if self._scanning: return
         if not self.device_info:
             messagebox.showerror("No Device", "Connect your device first.")
             return
 
         self._scanning = True
         self.scan_btn.configure(state="disabled", text="Scanning...")
-
-        prog = ctk.CTkProgressBar(self.device_strip, fg_color=self.T["progress_bg"], progress_color=self.T["accent"], height=4)
-        prog.set(0)
-        prog.pack(side="right", padx=12, fill="x", expand=True)
+        self.status_text.configure(text="Scanning device packages...")
+        self.progress_bar.set(0)
 
         def progress_cb(val, msg):
-            self.after(0, lambda: prog.set(val))
+            self.after(0, lambda: self.progress_bar.set(val))
+            self.after(0, lambda: self.status_text.configure(text=msg))
 
         def run():
             data = self.scanner.scan(self.device_info, progress_callback=progress_cb)
             self.app_data = data
 
             def done():
-                prog.destroy()
-                self.scan_btn.configure(state="normal", text="Re-Scan")
-                self._refresh_all_tabs()
+                self.scan_btn.configure(state="normal", text="⟳  Re-Scan")
                 self._scanning = False
+                self._switch_tab(self._active_tab)
+                total = sum(len(v) for v in data.values())
+                self.status_text.configure(text=f"Scan complete — {total} packages found")
             self.after(0, done)
 
         threading.Thread(target=run, daemon=True).start()
 
-    # ─── Log ─────────────────────────────────────────────────────────────────
+    # ─── Theme ────────────────────────────────────────────────────────────────
 
-    def _log(self, message: str, level: str = "info"):
-        T = self.T
-        color_map = {
-            "info": T["log_info"],
-            "success": T["log_success"],
-            "warning": T["log_warning"],
-            "error": T["log_error"],
-        }
-        color = color_map.get(level, T["log_info"])
-        ts = datetime.now().strftime("%H:%M:%S")
-        line = f"[{ts}] {message}\n"
+    def _switch_theme(self, name: str):
+        self.current_theme_name = name
+        self.T = get_theme(name)
+        for w in self.winfo_children():
+            w.destroy()
+        self.configure(fg_color=self.T["bg"])
+        self._build_ui()
+        if self.device_info:
+            self._on_device_connected(self.device_info)
+        self._switch_tab(self._active_tab)
 
-        def update():
-            # Strip log
-            self.log_strip_text.configure(state="normal")
-            self.log_strip_text.insert("end", line)
-            self.log_strip_text.see("end")
-            self.log_strip_text.configure(state="disabled")
-
-            # Full log tab
-            if hasattr(self, "full_log"):
-                self.full_log.configure(state="normal")
-                self.full_log.insert("end", line)
-                self.full_log.see("end")
-                self.full_log.configure(state="disabled")
-
-        self.after(0, update)
-
-    def _clear_log_strip(self):
-        self.log_strip_text.configure(state="normal")
-        self.log_strip_text.delete("1.0", "end")
-        self.log_strip_text.configure(state="disabled")
-
-    def _clear_full_log(self):
-        self.full_log.configure(state="normal")
-        self.full_log.delete("1.0", "end")
-        self.full_log.configure(state="disabled")
-        self._clear_log_strip()
-
-    def _export_log(self):
-        path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt")],
-            initialfile=f"DebloatKit_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        )
-        if path:
-            content = self.full_log.get("1.0", "end")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-            self._log(f"Log exported: {path}", "success")
-
-    # ─── Settings Helpers ─────────────────────────────────────────────────────
+    # ─── Settings helpers ─────────────────────────────────────────────────────
 
     def _browse_adb(self):
-        path = filedialog.askopenfilename(filetypes=[("ADB executable", "adb.exe"), ("All files", "*.*")])
+        path = filedialog.askopenfilename(filetypes=[("ADB", "adb.exe"), ("All", "*.*")])
         if path:
             self.adb_path_var.set(path)
             self.adb.adb_path = path
@@ -1132,10 +1180,8 @@ class DebloatKit(ctk.CTk):
     def _test_adb(self):
         self.adb.adb_path = self.adb_path_var.get()
         if self.adb.is_adb_available():
-            self._log("ADB is working correctly.", "success")
             messagebox.showinfo("ADB Test", "ADB is working correctly!")
         else:
-            self._log("ADB not found or not working.", "error")
             messagebox.showerror("ADB Test", "ADB not found. Check the path in Settings.")
 
     def _browse_backup(self):
@@ -1152,14 +1198,9 @@ class DebloatKit(ctk.CTk):
         if not self.device_info:
             messagebox.showerror("No Device", "Device must be connected for Panic Restore.")
             return
-        if messagebox.askyesno(
-            "Panic Restore",
-            f"Re-enable ALL packages from:\n{os.path.basename(backup_path)}\n\nProceed?"
-        ):
+        if messagebox.askyesno("Panic Restore",
+                               f"Re-enable ALL from:\n{os.path.basename(backup_path)}\n\nProceed?"):
             threading.Thread(target=self.debloater.panic_restore, args=(backup_path,), daemon=True).start()
-
-    def _on_dry_run_toggle(self):
-        self.debloater.set_dry_run(self.dry_run_var.get())
 
     def on_close(self):
         self.adb.stop_polling()
