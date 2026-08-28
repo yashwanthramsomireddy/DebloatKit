@@ -1,0 +1,158 @@
+{
+  "version": "1.0",
+  "updated": "2026-08-28",
+  "packages": [
+
+    // ─── SAMSUNG SYSTEM APPS ─────────────────────────────────────────────────
+
+    // Bixby Suite
+    {"pkg": "com.samsung.android.bixby.agent", "name": "Bixby Voice", "category": "system", "subcategory": "Bixby", "risk": "SAFE", "path": "A", "description": "Bixby voice assistant", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.bixby.wakeup", "name": "Bixby Wake-up", "category": "system", "subcategory": "Bixby", "risk": "SAFE", "path": "A", "description": "Bixby voice activation listener", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.bixby.service", "name": "Bixby Service", "category": "system", "subcategory": "Bixby", "risk": "SAFE", "path": "A", "description": "Core Bixby service layer", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.routines", "name": "Bixby Routines", "category": "system", "subcategory": "Bixby", "risk": "CAUTION", "path": "A", "description": "Bixby Routines / Modes & automation. Keep if you use Modes.", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.visionintelligence", "name": "Bixby Vision", "category": "system", "subcategory": "Bixby", "risk": "SAFE", "path": "A", "description": "Bixby Vision AR camera lookup", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.bixbyvision.framework", "name": "Bixby Vision Framework", "category": "system", "subcategory": "Bixby", "risk": "SAFE", "path": "A", "description": "Framework for Bixby Vision features", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.bixby.stonservice", "name": "Bixby STON Service", "category": "system", "subcategory": "Bixby", "risk": "SAFE", "path": "A", "description": "Bixby backend analytics service", "eras": [2, 3]},
+
+    // AR & Camera Extras
+    {"pkg": "com.samsung.android.ar.zone", "name": "AR Zone", "category": "system", "subcategory": "AR & Camera", "risk": "SAFE", "path": "A", "description": "AR Zone features hub", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.aremoji", "name": "AR Emoji", "category": "system", "subcategory": "AR & Camera", "risk": "SAFE", "path": "A", "description": "AR Emoji sticker creation", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.arzone", "name": "AR Zone App", "category": "system", "subcategory": "AR & Camera", "risk": "SAFE", "path": "A", "description": "AR Zone camera app entry", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.dressroom", "name": "AR Dressing Room", "category": "system", "subcategory": "AR & Camera", "risk": "SAFE", "path": "A", "description": "AR try-on feature", "eras": [3]},
+
+    // Samsung Pay & Finance
+    {"pkg": "com.samsung.android.spayfw", "name": "Samsung Pay Framework", "category": "system", "subcategory": "Samsung Pay", "risk": "CAUTION", "path": "A", "description": "Samsung Pay core framework. Keep if you use Samsung Pay.", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.spaymini", "name": "Samsung Pay Mini", "category": "system", "subcategory": "Samsung Pay", "risk": "SAFE", "path": "A", "description": "Lightweight Samsung Pay interface", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.samsungpass", "name": "Samsung Pass", "category": "system", "subcategory": "Samsung Pay", "risk": "CAUTION", "path": "A", "description": "Samsung biometric password manager. Keep if you use Samsung Pass.", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.samsungpassautofill", "name": "Samsung Pass Autofill", "category": "system", "subcategory": "Samsung Pay", "risk": "SAFE", "path": "A", "description": "Samsung Pass autofill service", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.authfw", "name": "Auth Framework", "category": "system", "subcategory": "Samsung Pay", "risk": "CAUTION", "path": "A", "description": "Samsung authentication framework used by Pay & Pass", "eras": [2, 3]},
+
+    // Samsung Apps & Utilities
+    {"pkg": "com.samsung.android.calendar", "name": "Samsung Calendar", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung Calendar app. Safe if using Google Calendar.", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.android.app.tips", "name": "Samsung Tips", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Tips and tricks app", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.social", "name": "Samsung Social", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung social integration", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.reminder", "name": "Samsung Reminder", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Reminder app tied to Bixby", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.spage", "name": "Samsung Free / Bixby Home", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung Free news/content panel (left swipe home)", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.sketchbook", "name": "Samsung Sketch", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung sketch/drawing app", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.mateagent", "name": "Smart Tutor", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung remote support agent", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.storyservice", "name": "Story Service", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Auto story/highlight creation from gallery", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.kidsinstaller", "name": "Kids Installer", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung Kids mode installer", "eras": [2, 3]},
+    {"pkg": "com.sec.android.app.kidshome", "name": "Samsung Kids Home", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Kids mode home launcher", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.mdecservice", "name": "Multi-Device Experience", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Samsung multi-device continuity service", "eras": [3]},
+    {"pkg": "com.samsung.android.uds", "name": "Ultra Data Saving", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Ultra data saving mode service", "eras": [2, 3]},
+    {"pkg": "com.sec.android.widgetapp.webmanual", "name": "Web Manual", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Online manual widget", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.app.watchmanagerstub", "name": "Watch Manager Stub", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Stub for Galaxy Watch Manager", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.mdx", "name": "Samsung Link to Windows", "category": "system", "subcategory": "Samsung Apps", "risk": "SAFE", "path": "A", "description": "Link to Windows / Phone Link integration", "eras": [3]},
+
+    // Gaming
+    {"pkg": "com.samsung.android.game.gamehome", "name": "Gaming Hub", "category": "system", "subcategory": "Gaming", "risk": "SAFE", "path": "A", "description": "Samsung Gaming Hub launcher", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.game.gametools", "name": "Game Booster", "category": "system", "subcategory": "Gaming", "risk": "SAFE", "path": "A", "description": "Game Booster overlay during gameplay", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.game.gos", "name": "Game Optimizing Service", "category": "system", "subcategory": "Gaming", "risk": "CAUTION", "path": "A", "description": "Game performance throttling service. Disabling may improve performance.", "eras": [2, 3]},
+
+    // Smart Switch & Transfer
+    {"pkg": "com.sec.android.easyMover", "name": "Smart Switch", "category": "system", "subcategory": "Transfer", "risk": "SAFE", "path": "A", "description": "Smart Switch data migration tool", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.smartswitchassistant", "name": "Smart Switch Assistant", "category": "system", "subcategory": "Transfer", "risk": "SAFE", "path": "A", "description": "Smart Switch setup assistant", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.drivelink.stub", "name": "Drive Link Stub", "category": "system", "subcategory": "Transfer", "risk": "SAFE", "path": "A", "description": "Auto sync drive link stub", "eras": [2, 3]},
+
+    // My Galaxy / Members
+    {"pkg": "com.mygalaxy", "name": "My Galaxy", "category": "system", "subcategory": "Samsung Services", "risk": "SAFE", "path": "A", "description": "Samsung My Galaxy app", "eras": [2, 3]},
+    {"pkg": "com.mygalaxy.service", "name": "My Galaxy Service", "category": "system", "subcategory": "Samsung Services", "risk": "SAFE", "path": "A", "description": "My Galaxy background service", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.memembers", "name": "Samsung Members", "category": "system", "subcategory": "Samsung Services", "risk": "SAFE", "path": "A", "description": "Samsung Members community & support app", "eras": [2, 3]},
+
+    // Diagnostics & Telemetry
+    {"pkg": "com.sec.android.diagmonagent", "name": "Diagnostic Monitor", "category": "system", "subcategory": "Diagnostics", "risk": "RECOMMENDED", "path": "A", "description": "Diagnostic monitoring agent. Also fixes SoundAlive audio crashes.", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.rubin.app", "name": "Customization Service", "category": "system", "subcategory": "Diagnostics", "risk": "RECOMMENDED", "path": "A", "description": "Behavioral data tracking & ad customization service", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.scpm", "name": "Smart Control Provider", "category": "system", "subcategory": "Diagnostics", "risk": "SAFE", "path": "A", "description": "Smart control provider manager", "eras": [3]},
+    {"pkg": "com.samsung.android.statisticslogger", "name": "Statistics Logger", "category": "system", "subcategory": "Diagnostics", "risk": "SAFE", "path": "A", "description": "Usage statistics collection", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.samsungerrorreporter", "name": "Error Reporter", "category": "system", "subcategory": "Diagnostics", "risk": "SAFE", "path": "A", "description": "Samsung crash/error reporting service", "eras": [2, 3]},
+
+    // Language Packs (SMT)
+    {"pkg": "com.samsung.SMT.lang_ar_ae_m00", "name": "Arabic TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Arabic language pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_es_us_f00", "name": "Spanish (US) TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Spanish (US) pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_ru_ru_f00", "name": "Russian TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Russian pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_pt_br_f00", "name": "Portuguese (BR) TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Portuguese Brazil pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_fr_fr_f00", "name": "French TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS French pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_th_th_f00", "name": "Thai TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Thai pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_es_mx_f00", "name": "Spanish (MX) TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Spanish Mexico pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_id_id_f00", "name": "Indonesian TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Indonesian pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_es_es_f00", "name": "Spanish (ES) TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Spanish Spain pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_de_de_f00", "name": "German TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS German pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_hi_in_f00", "name": "Hindi TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Hindi pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_vi_vn_f00", "name": "Vietnamese TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Vietnamese pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_pl_pl_f00", "name": "Polish TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Polish pack", "eras": [1, 2, 3]},
+    {"pkg": "com.samsung.SMT.lang_it_it_f00", "name": "Italian TTS Pack", "category": "system", "subcategory": "Language Packs", "risk": "SAFE", "path": "A", "description": "Samsung TTS Italian pack", "eras": [1, 2, 3]},
+
+    // LED / Cover
+    {"pkg": "com.sec.android.cover.ledcover", "name": "LED Cover", "category": "system", "subcategory": "Accessories", "risk": "SAFE", "path": "A", "description": "LED cover notification service", "eras": [1, 2]},
+
+    // Legacy TouchWiz
+    {"pkg": "com.samsung.android.hms", "name": "Gear VR Service", "category": "system", "subcategory": "Legacy", "risk": "SAFE", "path": "A", "description": "Gear VR base service (legacy)", "eras": [1]},
+    {"pkg": "com.sec.android.app.shealth", "name": "S Health (Legacy)", "category": "system", "subcategory": "Legacy", "risk": "SAFE", "path": "A", "description": "Older standalone S Health framework", "eras": [1]},
+    {"pkg": "com.sec.android.widgetboard", "name": "Briefing / Flipboard", "category": "system", "subcategory": "Legacy", "risk": "SAFE", "path": "A", "description": "Briefing / Flipboard dashboard widget", "eras": [1]},
+    {"pkg": "com.sec.android.app.sns3", "name": "Social Hub", "category": "system", "subcategory": "Legacy", "risk": "SAFE", "path": "A", "description": "TouchWiz Facebook Sync / Social Hub", "eras": [1]},
+    {"pkg": "com.samsung.knox.kss", "name": "Knox Security Stub (Legacy)", "category": "system", "subcategory": "Legacy", "risk": "SAFE", "path": "A", "description": "Legacy Knox security stub", "eras": [1]},
+
+    // Galaxy Store
+    {"pkg": "com.sec.android.app.samsungapps", "name": "Galaxy Store", "category": "system", "subcategory": "Samsung Services", "risk": "CAUTION", "path": "A", "description": "Galaxy Store. Keep if using Galaxy Watch or wearables.", "eras": [1, 2, 3]},
+
+    // ─── CORE APPS (separate tab, confirmation required) ──────────────────────
+
+    {"pkg": "com.samsung.android.knox.zt.framework", "name": "Knox Zero Trust", "category": "core", "subcategory": "Knox & Security", "risk": "CORE", "path": "B", "description": "Knox Zero Trust security framework. Safe for non-enterprise devices.", "eras": [3]},
+    {"pkg": "com.samsung.knox.securefolder", "name": "Secure Folder", "category": "core", "subcategory": "Knox & Security", "risk": "CORE", "path": "B", "description": "Knox Secure Folder. Disabling removes Secure Folder access entirely.", "eras": [2, 3]},
+    {"pkg": "com.sec.android.emergencylauncher", "name": "Emergency Mode", "category": "core", "subcategory": "Knox & Security", "risk": "CORE", "path": "B", "description": "Emergency mode / Ultra Power Saving launcher. Keep for safety.", "eras": [2, 3]},
+    {"pkg": "com.google.android.gms.supervision", "name": "Family Link / Parental Controls", "category": "core", "subcategory": "Knox & Security", "risk": "CORE", "path": "B", "description": "Google parental controls. Only disable if no child accounts are set up.", "eras": [3]},
+    {"pkg": "com.android.virtualization.terminal", "name": "Linux Terminal", "category": "core", "subcategory": "Developer", "risk": "CORE", "path": "A", "description": "Linux developer sandbox terminal. Safe to remove if not a developer.", "eras": [3]},
+    {"pkg": "com.touchtype.swiftkey", "name": "SwiftKey Keyboard", "category": "core", "subcategory": "Input", "risk": "CORE", "path": "B", "description": "Microsoft SwiftKey OEM integration. Safe if using Gboard or Samsung Keyboard.", "eras": [3]},
+    {"pkg": "com.swiftkey.swiftkeyconfigurator", "name": "SwiftKey Configurator", "category": "core", "subcategory": "Input", "risk": "CORE", "path": "B", "description": "SwiftKey configuration service", "eras": [3]},
+
+    // ─── USER APPS ─────────────────────────────────────────────────────────────
+
+    {"pkg": "com.google.android.youtube", "name": "YouTube", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "YouTube app — reinstall from Play Store anytime", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.apps.photos", "name": "Google Photos", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Photos. Safe if using Samsung Gallery.", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.apps.maps", "name": "Google Maps", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Maps preload", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.apps.tachyon", "name": "Google Meet (Duo)", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Meet / Duo video calling", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.apps.books", "name": "Google Play Books", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Play Books", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.play.games", "name": "Google Play Games", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Play Games app", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.videos", "name": "Google Play Movies", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Play Movies & TV", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.music", "name": "Google Play Music (Legacy)", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Legacy Google Play Music", "eras": [1]},
+    {"pkg": "com.google.android.apps.magazines", "name": "Google News", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google News / Newsstand", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.apps.docs", "name": "Google Docs", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Docs — reinstallable from Play Store", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.talk", "name": "Google Hangouts (Legacy)", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Legacy Google Hangouts", "eras": [1]},
+    {"pkg": "com.google.android.apps.messaging", "name": "Google Messages", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Google Messages. Keep if using as default SMS app.", "eras": [2, 3]},
+    {"pkg": "com.google.android.apps.plus", "name": "Google+ (Legacy)", "category": "user", "subcategory": "Google", "risk": "SAFE", "path": "A", "description": "Legacy Google+ social network", "eras": [1]},
+
+    // ─── 3RD PARTY APPS ────────────────────────────────────────────────────────
+
+    // Facebook
+    {"pkg": "com.facebook.katana", "name": "Facebook", "category": "thirdparty", "subcategory": "Facebook", "risk": "SAFE", "path": "A", "description": "Facebook main app (OEM preload)", "eras": [1, 2, 3]},
+    {"pkg": "com.facebook.system", "name": "Facebook System Service", "category": "thirdparty", "subcategory": "Facebook", "risk": "RECOMMENDED", "path": "A", "description": "Facebook background system service — always runs. Recommended to remove.", "eras": [1, 2, 3]},
+    {"pkg": "com.facebook.services", "name": "Facebook Services", "category": "thirdparty", "subcategory": "Facebook", "risk": "RECOMMENDED", "path": "A", "description": "Facebook core services running in background", "eras": [1, 2, 3]},
+    {"pkg": "com.facebook.appmanager", "name": "Facebook App Manager", "category": "thirdparty", "subcategory": "Facebook", "risk": "RECOMMENDED", "path": "A", "description": "Facebook app update manager — runs silently", "eras": [1, 2, 3]},
+
+    // Microsoft
+    {"pkg": "com.microsoft.appmanager", "name": "Microsoft App Manager", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft app manager / updater", "eras": [2, 3]},
+    {"pkg": "com.microsoft.skydrive", "name": "OneDrive", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft OneDrive cloud storage", "eras": [2, 3]},
+    {"pkg": "com.microsoft.office.excel", "name": "Microsoft Excel", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft Excel preload", "eras": [2, 3]},
+    {"pkg": "com.microsoft.office.word", "name": "Microsoft Word", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft Word preload", "eras": [2, 3]},
+    {"pkg": "com.microsoft.office.powerpoint", "name": "Microsoft PowerPoint", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft PowerPoint preload", "eras": [2, 3]},
+    {"pkg": "com.microsoft.emmx", "name": "Microsoft Edge", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft Edge browser preload", "eras": [2, 3]},
+    {"pkg": "com.microsoft.teams", "name": "Microsoft Teams", "category": "thirdparty", "subcategory": "Microsoft", "risk": "SAFE", "path": "A", "description": "Microsoft Teams preload", "eras": [2, 3]},
+
+    // Others
+    {"pkg": "com.linkedin.android", "name": "LinkedIn", "category": "thirdparty", "subcategory": "Social", "risk": "SAFE", "path": "A", "description": "LinkedIn preload", "eras": [2, 3]},
+    {"pkg": "flipboard.boxer.app", "name": "Flipboard Briefing", "category": "thirdparty", "subcategory": "Social", "risk": "SAFE", "path": "A", "description": "Flipboard news feed (Briefing panel)", "eras": [1, 2]},
+    {"pkg": "com.opera.max.preinstall", "name": "Opera Max", "category": "thirdparty", "subcategory": "Browser", "risk": "SAFE", "path": "A", "description": "Opera Max data saving browser preload", "eras": [1, 2]},
+    {"pkg": "in.mohalla.video", "name": "ShareChat Video", "category": "thirdparty", "subcategory": "Social", "risk": "SAFE", "path": "A", "description": "ShareChat short video preload", "eras": [2, 3]},
+    {"pkg": "com.next.innovation.takatak", "name": "TakaTak", "category": "thirdparty", "subcategory": "Social", "risk": "SAFE", "path": "A", "description": "TakaTak short video preload", "eras": [2, 3]},
+    {"pkg": "com.phonepe.app", "name": "PhonePe", "category": "thirdparty", "subcategory": "Finance", "risk": "SAFE", "path": "A", "description": "PhonePe payment app preload", "eras": [2, 3]},
+    {"pkg": "com.netflix.mediaclient", "name": "Netflix", "category": "thirdparty", "subcategory": "Entertainment", "risk": "SAFE", "path": "A", "description": "Netflix preload", "eras": [2, 3]},
+    {"pkg": "com.hiya.star", "name": "Hiya Caller ID", "category": "thirdparty", "subcategory": "Utilities", "risk": "SAFE", "path": "A", "description": "Hiya caller ID and spam blocker preload", "eras": [2, 3]},
+
+    // KEEP packages — never debloatable
+    {"pkg": "com.google.android.documentsuii", "name": "Files by Google (UI)", "category": "keep", "subcategory": "System Critical", "risk": "KEEP", "path": "NONE", "description": "Core Android Files UI. Removing causes system file picker to break.", "eras": [1, 2, 3]},
+    {"pkg": "com.sec.android.app.samsungapps", "name": "Galaxy Store (Wearables)", "category": "keep", "subcategory": "System Critical", "risk": "KEEP", "path": "NONE", "description": "Required for Galaxy Watch and wearable app updates.", "eras": [2, 3]},
+    {"pkg": "com.samsung.android.gms", "name": "Samsung GMS", "category": "keep", "subcategory": "System Critical", "risk": "KEEP", "path": "NONE", "description": "Core Google Mobile Services integration. Do not remove.", "eras": [1, 2, 3]},
+    {"pkg": "com.google.android.gms", "name": "Google Play Services", "category": "keep", "subcategory": "System Critical", "risk": "KEEP", "path": "NONE", "description": "Core Android services. Removing will break almost all apps.", "eras": [1, 2, 3]},
+    {"pkg": "com.android.phone", "name": "Phone / Dialer", "category": "keep", "subcategory": "System Critical", "risk": "KEEP", "path": "NONE", "description": "Core phone dialer. Do not remove.", "eras": [1, 2, 3]}
+  ]
+}
