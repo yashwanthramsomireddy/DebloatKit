@@ -71,6 +71,9 @@ VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
 MinVersion=10.0.17763
 
+; License agreement shown before install
+LicenseFile=LICENSE.rtf
+
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
@@ -92,6 +95,7 @@ Source: "assets\icon.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "README.md";    DestDir: "{app}"; Flags: ignoreversion
 Source: "CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE";      DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE.rtf";  DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 ; Create backups folder inside the install dir
