@@ -256,14 +256,25 @@ class ADBManager:
         return pkgs
 
     def disable_package(self, pkg: str) -> tuple[bool, str]:
-        self.log(f"[PATH A] Disabling {pkg}...", "info")
+        """Path A: pm disable-user --user 0"""
+        self.log(f"Disabling {pkg}...", "info")
         ok, out = self.run_shell(f"pm disable-user --user 0 {pkg}", timeout=15)
-        if ok and ("disabled" in out.lower() or not out):
+        out_l = out.lower()
+
+        if "disabled" in out_l or "component disabled" in out_l:
             self.log(f"✓ Disabled: {pkg}", "success")
             return True, "disabled"
+
         if "SecurityException" in out or "Exception" in out:
-            self.log(f"⚠ SecurityException for {pkg} — use Uninstall (Path B)", "warning")
+            self.log(f"⚠ SecurityException for {pkg} — use Uninstall instead", "warning")
             return False, "security_exception"
+
+        # Verify — some ROMs return empty on success
+        _, verify = self.run_shell(f"pm list packages -d | grep -w {pkg}", timeout=8)
+        if pkg in verify:
+            self.log(f"✓ Disabled (verified): {pkg}", "success")
+            return True, "disabled"
+
         self.log(f"✗ Failed to disable {pkg}: {out}", "error")
         return False, out
 

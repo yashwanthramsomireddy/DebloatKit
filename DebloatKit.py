@@ -408,7 +408,7 @@ class DebloatKit(ctk.CTk):
 
         # Chunked rendering — render one subcategory group per after() call
         # This keeps the UI responsive instead of freezing for 540 rows
-        CHUNK = 30   # rows per chunk
+        CHUNK = 50   # rows per chunk
 
         def render_chunk(queue_idx: int, item_idx: int):
             if queue_idx >= len(render_queue):
@@ -446,10 +446,10 @@ class DebloatKit(ctk.CTk):
             # Schedule next chunk
             if end_idx < len(items):
                 # More items in this group
-                self.after(1, lambda: render_chunk(queue_idx, end_idx))
+                self.after(15, lambda: render_chunk(queue_idx, end_idx))
             else:
                 # Move to next group
-                self.after(1, lambda: render_chunk(queue_idx + 1, 0))
+                self.after(15, lambda: render_chunk(queue_idx + 1, 0))
 
         # Start rendering
         render_chunk(0, 0)
@@ -711,6 +711,49 @@ class DebloatKit(ctk.CTk):
             ctk.CTkLabel(r, text=cdesc, font=("Segoe UI", 8), text_color=T["text_muted"],
                          anchor="w", wraplength=500, justify="left").pack(anchor="w")
         ctk.CTkFrame(cred, fg_color="transparent", height=4).pack()
+
+        # ── USB Debugging guide ───────────────────────────────────────────────
+        usb_card = ctk.CTkFrame(scroll, fg_color=T["bg_card"], corner_radius=8,
+                                border_width=1, border_color=T["border"])
+        usb_card.pack(fill="x", pady=(0, 5))
+
+        usb_hdr = ctk.CTkFrame(usb_card, fg_color="transparent")
+        usb_hdr.pack(fill="x", padx=12, pady=(8, 4))
+        ctk.CTkLabel(usb_hdr, text="📱  How to Use DebloatKit",
+                     font=("Segoe UI", 10, "bold"), text_color=T["accent"]).pack(side="left")
+
+        steps_enable = [
+            ("Enable USB Debugging", [
+                "Settings → About Phone → Software Information",
+                "Tap Build Number 7 times → 'Developer mode enabled'",
+                "Settings → Developer Options → USB Debugging → ON",
+                "Connect phone to PC via USB",
+                "Tap 'Allow' on phone when prompted",
+                "Click Scan in DebloatKit",
+            ]),
+            ("After Debloating — Disable USB Debugging", [
+                "Settings → Developer Options → USB Debugging → OFF",
+                "Optional: Developer Options → OFF to hide the menu",
+                "Disconnect USB cable",
+            ]),
+        ]
+
+        for section_title, steps in steps_enable:
+            ctk.CTkLabel(usb_card, text=section_title,
+                         font=("Segoe UI", 9, "bold"),
+                         text_color=T["text"], anchor="w").pack(anchor="w", padx=12, pady=(4, 2))
+            for i, step in enumerate(steps, 1):
+                row = ctk.CTkFrame(usb_card, fg_color=T["bg"], corner_radius=4)
+                row.pack(fill="x", padx=12, pady=1)
+                ctk.CTkLabel(row, text=str(i), font=("Segoe UI", 9, "bold"),
+                             text_color=T["accent"], width=18, anchor="center").pack(side="left", padx=(6, 4), pady=4)
+                ctk.CTkLabel(row, text=step, font=("Segoe UI", 9),
+                             text_color=T["text_muted"], anchor="w").pack(side="left", padx=(0, 6), pady=4)
+
+        ctk.CTkLabel(usb_card,
+                     text="⚠  Always disable USB Debugging after use for security.",
+                     font=("Segoe UI", 8, "bold"), text_color=T["warning"],
+                     anchor="w").pack(anchor="w", padx=12, pady=(4, 8))
 
         # ── Disclaimer one line ───────────────────────────────────────────────
         ctk.CTkLabel(scroll,
