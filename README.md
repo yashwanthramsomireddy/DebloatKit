@@ -241,7 +241,7 @@ DebloatKit is free and always will be. If it saved you time:
 
 DebloatKit is an independent open-source tool not affiliated with, endorsed by, or connected to Samsung Electronics Co., Ltd. Samsung and Galaxy are trademarks of Samsung Electronics. This tool uses Android's standard ADB debugging interface.
 
-Credits: XDA Developers community · @Vordx · Universal Android Debloater project
+Credits: XDA Community (package safety data and debloat guides) · Google Research (AOSP ADB documentation)
 
 ---
 

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="32" fill="#0a0a0a"/>
+  
+  <!-- Outer hex ring -->
+  <polygon points="128,18 218,68 218,168 128,218 38,168 38,68"
+           fill="none" stroke="#00e676" stroke-width="6" stroke-linejoin="round"/>
+  
+  <!-- Inner hex -->
+  <polygon points="128,42 196,82 196,162 128,202 60,162 60,82"
+           fill="#111111" stroke="#00b359" stroke-width="2" stroke-linejoin="round"/>
+
+  <!-- Circuit trace dots at hex corners -->
+  <circle cx="128" cy="18" r="5" fill="#00e676"/>
+  <circle cx="218" cy="68" r="5" fill="#00e676"/>
+  <circle cx="218" cy="168" r="5" fill="#00e676"/>
+  <circle cx="128" cy="218" r="5" fill="#00e676"/>
+  <circle cx="38" cy="168" r="5" fill="#00e676"/>
+  <circle cx="38" cy="68" r="5" fill="#00e676"/>
+  
+  <!-- D letter — bold, custom drawn -->
+  <path d="M 85,76 L 85,180 L 128,180 
+             C 168,180 188,160 188,128
+             C 188,96 168,76 128,76 Z
+             M 110,100 L 128,100
+             C 152,100 162,112 162,128
+             C 162,144 152,156 128,156 L 110,156 Z"
+        fill="#00e676"/>
+  
+  <!-- Small circuit traces emanating from hex corners -->
+  <line x1="128" y1="18" x2="128" y2="42" stroke="#00e676" stroke-width="2"/>
+  <line x1="218" y1="68" x2="196" y2="82" stroke="#00e676" stroke-width="2"/>
+  <line x1="218" y1="168" x2="196" y2="162" stroke="#00e676" stroke-width="2"/>
+  <line x1="128" y1="218" x2="128" y2="202" stroke="#00e676" stroke-width="2"/>
+  <line x1="38" y1="168" x2="60" y2="162" stroke="#00e676" stroke-width="2"/>
+  <line x1="38" y1="68" x2="60" y2="82" stroke="#00e676" stroke-width="2"/>
+</svg>

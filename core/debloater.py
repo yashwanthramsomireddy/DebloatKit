@@ -169,19 +169,15 @@ class Debloater:
                         entry.state = "uninstalled"
 
                 elif action == "enable":
-                    ok, msg = self.adb.enable_package(entry.pkg)
+                    # Smart restore — use correct command based on previous state
+                    ok, msg = self.adb.restore_package(entry.pkg, entry.state)
                     r.success = ok
                     r.message = msg
                     if ok:
                         entry.state = "enabled"
 
                 elif action == "restore":
-                    ok, msg = self.adb.reinstall_package(entry.pkg)
-                    if not ok:
-                        # Try enable as fallback
-                        ok2, msg2 = self.adb.enable_package(entry.pkg)
-                        if ok2:
-                            ok, msg = ok2, msg2
+                    ok, msg = self.adb.restore_package(entry.pkg, entry.state)
                     r.success = ok
                     r.message = msg
                     if ok:

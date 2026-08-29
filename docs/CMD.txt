@@ -1,0 +1,5 @@
+pip install customtkinter
+python DebloatKit.py
+
+
+To build: run build.bat → then installer\build_installer.bat → outputs DebloatKit_Setup_v1.0.exe

@@ -12,41 +12,36 @@ echo.
 REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo  [ERROR] Python not found. Install Python 3.11+ from https://python.org
+    echo  [ERROR] Python 3.11+ not found. https://python.org
     pause & exit /b 1
 )
+echo  [OK] Python found.
 
 REM Install dependencies
-echo  [1/4] Installing dependencies...
-pip install customtkinter pyinstaller --quiet
+echo  [1/3] Installing dependencies...
+pip install customtkinter pyinstaller pillow --quiet
 if errorlevel 1 (
-    echo  [ERROR] Failed to install dependencies.
+    echo  [ERROR] pip install failed.
     pause & exit /b 1
 )
-echo        Done.
+echo       Done.
 
-REM Generate installer assets if not present
-if not exist "assets\installer_side_164x314.bmp" (
-    echo  [1b]   Generating installer assets...
-    python gen_bitmaps.py
-)
-
-REM Clean previous build
-echo  [2/4] Cleaning previous build...
+REM Clean previous build artifacts only
+echo  [2/3] Cleaning previous build...
 if exist "dist\DebloatKit.exe" del /f /q "dist\DebloatKit.exe"
 if exist "build" rmdir /s /q "build"
 if exist "DebloatKit.spec" del /f /q "DebloatKit.spec"
-echo        Done.
+echo       Done.
 
-REM Build exe
-echo  [3/4] Building DebloatKit.exe...
+REM Build -- assets/icon.ico is embedded, data/ is bundled
+echo  [3/3] Building DebloatKit.exe...
 echo.
 
 pyinstaller ^
     --onefile ^
     --windowed ^
     --name "DebloatKit" ^
-    --uac-admin ^
+    --icon "assets\icon.ico" ^
     --add-data "data;data" ^
     --hidden-import customtkinter ^
     --hidden-import PIL ^
@@ -54,16 +49,15 @@ pyinstaller ^
     --collect-all customtkinter ^
     DebloatKit.py
 
+REM NOTE: --uac-admin removed intentionally.
+REM The installer (DebloatKit_Installer.iss) uses PrivilegesRequired=lowest
+REM so Windows does NOT force UAC on launch. ADB runs fine without elevation.
+
 if errorlevel 1 (
     echo.
-    echo  [ERROR] Build failed. Check output above.
+    echo  [ERROR] Build failed. See output above.
     pause & exit /b 1
 )
-
-REM Copy assets
-echo  [4/4] Copying assets to dist\...
-if not exist "dist\backups" mkdir "dist\backups"
-if exist "assets" xcopy /e /i /q "assets" "dist\assets" >nul
 
 echo.
 echo  =============================================
@@ -71,7 +65,6 @@ echo    BUILD SUCCESSFUL!
 echo    Output: dist\DebloatKit.exe
 echo  =============================================
 echo.
-echo  Next step: run installer\build_installer.bat
-echo  to create the Windows setup .exe
+echo  Next: run build_installer.bat to create the setup .exe
 echo.
 pause
